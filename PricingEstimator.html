@@ -1164,6 +1164,7 @@ let selectedPlanIds    = new Set(); // multi-select: set of planId strings
 
 // ── Photo state ───────────────────────────────────────────────
 let quotePhotos = [];  // array of { id, url, filename, caption, sort_order }
+let currentSession = null; // Supabase session, set in updateAuthUI
 
 // ============================================================
 // INIT
