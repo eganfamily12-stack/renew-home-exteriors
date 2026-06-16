@@ -231,7 +231,103 @@
     .card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
     body { font-size: 11px; }
   }
+
+  /* ── MOBILE NAV BAR ────────────────────────────────────────── */
+  .mobile-tab-bar {
+    display: none;
+    position: sticky; top: 0; z-index: 100;
+    background: #fff; border-bottom: 2px solid var(--border);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .mobile-tab-bar button {
+    flex: 1; padding: 13px 8px; border: none; background: none;
+    font-size: 13px; font-weight: 600; color: var(--muted);
+    cursor: pointer; border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  .mobile-tab-bar button.active {
+    color: var(--primary); border-bottom-color: var(--accent);
+  }
+  .mobile-total-pill {
+    display: none;
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: var(--primary); color: #fff;
+    padding: 12px 28px; border-radius: 30px;
+    font-size: 15px; font-weight: 700;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    cursor: pointer; z-index: 99; white-space: nowrap;
+  }
+
+  /* ── RESPONSIVE: MOBILE (≤768px) ──────────────────────────── */
+  @media (max-width: 768px) {
+    /* Header */
+    header { padding: 10px 14px; gap: 8px; }
+    header .tagline { display: none; }
+    header .badge { font-size: 11px; padding: 3px 8px; }
+    header .logo { font-size: 16px; }
+    #userNameDisplay { display: none !important; }
+
+    /* Page nav — horizontal scroll */
+    nav { padding: 0 8px; overflow-x: auto; white-space: nowrap; }
+    nav a { padding: 9px 12px; font-size: 12px; }
+
+    /* Status bar */
+    .status-bar { padding: 4px 14px; gap: 12px; font-size: 10px; overflow-x: auto; white-space: nowrap; }
+
+    /* Mobile tab bar */
+    .mobile-tab-bar { display: flex; }
+    .mobile-total-pill { display: block; }
+
+    /* App layout — stack panels */
+    .app { grid-template-columns: 1fr; min-height: unset; }
+    .sidebar { border-right: none; overflow-y: visible; padding-bottom: 80px; }
+    .main { padding: 12px; padding-bottom: 80px; overflow-y: visible; }
+
+    /* Panel show/hide via JS-toggled class */
+    .sidebar.mob-hidden { display: none; }
+    .main.mob-hidden   { display: none; }
+
+    /* Template grid — 2 cols on mobile */
+    .template-grid { grid-template-columns: 1fr 1fr; }
+
+    /* Totals — stack */
+    .totals-grid { grid-template-columns: 1fr; }
+    .totals-right { border-left: none; border-top: 2px solid var(--border); padding-left: 0; padding-top: 10px; margin-top: 10px; }
+
+    /* Quote table — horizontally scrollable */
+    .quote-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .quote-table { min-width: 480px; }
+
+    /* Buttons — full width on mobile */
+    .btn-row { flex-direction: column; }
+    .btn-row .btn { width: 100%; justify-content: center; padding: 13px; font-size: 14px; }
+
+    /* Inputs — 16px prevents iOS auto-zoom */
+    input[type=text], input[type=number], select, textarea { font-size: 16px !important; padding: 10px 12px; }
+
+    /* Touch-friendly pitch buttons */
+    .pitch-btn { padding: 8px 14px; font-size: 12px; }
+
+    /* Satellite map preview */
+    #mapPreviewBox { max-height: 160px; }
+
+    /* Photo grid — 2 cols */
+    #photoGrid { grid-template-columns: 1fr 1fr !important; }
+
+    /* Color rows — stack */
+    .color-row { flex-direction: column; gap: 4px; }
+  }
+
+  @media (max-width: 400px) {
+    .template-grid { grid-template-columns: 1fr 1fr; }
+    header .logo { font-size: 14px; }
+  }
 </style>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a3a5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RHE Estimator">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -287,10 +383,21 @@
   <span>Last Updated: 2025</span>
 </div>
 
+<!-- MOBILE TAB BAR -->
+<div class="mobile-tab-bar" id="mobileTabBar">
+  <button class="active" onclick="switchMobileTab('setup', this)">📋 Customer &amp; Job</button>
+  <button onclick="switchMobileTab('quote', this)">🛒 Quote Builder</button>
+</div>
+
+<!-- MOBILE TOTAL PILL (floating) -->
+<div class="mobile-total-pill no-print" id="mobileTotalPill" onclick="switchMobileTab('quote', document.querySelectorAll('.mobile-tab-bar button')[1])">
+  Total: <span id="mobileTotalAmt">$0.00</span> &nbsp;→
+</div>
+
 <div class="app">
 
   <!-- SIDEBAR -->
-  <div class="sidebar">
+  <div class="sidebar" id="sidebarPanel">
 
     <!-- Template Selector -->
     <div class="card">
@@ -489,7 +596,7 @@
   </div><!-- /sidebar -->
 
   <!-- MAIN -->
-  <div class="main">
+  <div class="main mob-hidden" id="mainPanel">
 
     <!-- Product Browser -->
     <div class="card no-print">
@@ -1166,7 +1273,34 @@ let selectedPlanIds    = new Set(); // multi-select: set of planId strings
 let quotePhotos = [];  // array of { id, url, filename, caption, sort_order }
 let currentSession = null; // Supabase session, set in updateAuthUI
 
+// ── Mobile tab switching ──────────────────────────────────────
+function switchMobileTab(tab, btnEl) {
+  const sidebar = document.getElementById('sidebarPanel');
+  const main    = document.getElementById('mainPanel');
+  if (!sidebar || !main) return;
+  if (tab === 'setup') {
+    sidebar.classList.remove('mob-hidden');
+    main.classList.add('mob-hidden');
+  } else {
+    main.classList.remove('mob-hidden');
+    sidebar.classList.add('mob-hidden');
+  }
+  // Update active button state
+  document.querySelectorAll('.mobile-tab-bar button').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+}
+
+function updateMobileTotalPill(grand) {
+  const pill = document.getElementById('mobileTotalAmt');
+  if (pill) pill.textContent = '$' + (grand || 0).toFixed(2);
+}
+
 // ============================================================
+// Register service worker (PWA)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(err => console.warn('[SW]', err));
+}
+
 // INIT
 // ============================================================
 window.onload = async function() {
@@ -1764,10 +1898,10 @@ function renderQuote() {
     }
   }
   const grand = Math.max(0, preDiscountTotal - discountAmt);
-  el.innerHTML = `<table class="quote-table">
+  el.innerHTML = `<div class="quote-table-scroll"><table class="quote-table">
     <thead><tr><th>#</th><th>Product / Description</th><th>Qty</th><th>Unit Price</th><th>Total</th><th class="no-print"></th></tr></thead>
     <tbody>${rows}</tbody>
-  </table>`;
+  </table></div>`;
   totEl.style.display = 'grid';
   document.getElementById('totalSub').textContent = '$' + subtotal.toFixed(2);
   document.getElementById('totalTax').textContent = '$' + taxTotal.toFixed(2);
@@ -1781,6 +1915,7 @@ function renderQuote() {
     if (discRow)  discRow.style.display  = 'none';
   }
   document.getElementById('totalGrand').textContent = '$' + grand.toFixed(2);
+  updateMobileTotalPill(grand);
   renderProductList();
   updatePaymentDisplay(grand);
   renderScopePreview();
