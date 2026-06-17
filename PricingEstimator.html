@@ -325,6 +325,7 @@
 </style>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a3a5c">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="RHE Estimator">
@@ -374,6 +375,11 @@
      style="color:rgba(255,255,255,0.6);text-decoration:none;padding:10px 18px;font-size:13px;font-weight:600;border-bottom:3px solid transparent;transition:color 0.15s"
      onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.6)'">
     🔄 Change Orders
+  </a>
+  <a href="reports.html"
+     style="color:rgba(255,255,255,0.6);text-decoration:none;padding:10px 18px;font-size:13px;font-weight:600;border-bottom:3px solid transparent;transition:color 0.15s"
+     onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.6)'">
+    📊 Reports
   </a>
 </nav>
 
@@ -609,6 +615,59 @@
       <div class="product-list" id="productList"></div>
     </div>
 
+    <!-- Alside Comparison Section (hidden unless comparison template active) -->
+    <div id="alsideSection" style="display:none">
+      <div class="card" style="border:2px solid #1a3a5c">
+        <h3 style="color:#1a3a5c">📊 Alside Siding — 3-Option Comparison</h3>
+        <p style="font-size:12px;color:#6b7a90;margin:0 0 14px">Each option builds its own complete line-item estimate. Click <strong>Auto-Fill</strong> on each tier to populate from your siding measurements, then adjust as needed.</p>
+        <!-- TIER 1: House Wrap -->
+        <div style="border:1px solid #b0c4de;border-radius:8px;margin-bottom:16px;overflow:hidden">
+          <div style="background:#1a3a5c;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+            <span style="font-weight:700;font-size:13px">Option 1 — House Wrap (.044)</span>
+            <button onclick="autoFillAlsideTier('housewrap')" style="background:#e8500a;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer">⚡ Auto-Fill</button>
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:#f4f7fb"><th style="padding:6px 8px;font-size:11px;text-align:left;font-weight:700;color:#1a3a5c">Product</th><th style="padding:6px 8px;font-size:11px;text-align:center;font-weight:700;color:#1a3a5c">Qty</th><th style="padding:6px 8px;font-size:11px;text-align:right;font-weight:700;color:#1a3a5c">Total</th><th style="width:28px"></th></tr></thead>
+            <tbody id="alsideTierBody_housewrap"></tbody>
+          </table>
+          <div style="padding:8px 12px;background:#f8fafd;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e0e8f0">
+            <span id="alsideTierFin_housewrap" style="font-size:11px;color:#d4860a"></span>
+            <span style="font-size:13px;font-weight:800;color:#1a3a5c">Total: <span id="alsideTierTotal_housewrap">$0.00</span></span>
+          </div>
+        </div>
+        <!-- TIER 2: Polar Board -->
+        <div style="border:1px solid #b0c4de;border-radius:8px;margin-bottom:16px;overflow:hidden">
+          <div style="background:#234f7a;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+            <span style="font-weight:700;font-size:13px">Option 2 — Polar Board (.044 + 3/8&quot;)</span>
+            <button onclick="autoFillAlsideTier('polarboard')" style="background:#e8500a;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer">⚡ Auto-Fill</button>
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:#f4f7fb"><th style="padding:6px 8px;font-size:11px;text-align:left;font-weight:700;color:#1a3a5c">Product</th><th style="padding:6px 8px;font-size:11px;text-align:center;font-weight:700;color:#1a3a5c">Qty</th><th style="padding:6px 8px;font-size:11px;text-align:right;font-weight:700;color:#1a3a5c">Total</th><th style="width:28px"></th></tr></thead>
+            <tbody id="alsideTierBody_polarboard"></tbody>
+          </table>
+          <div style="padding:8px 12px;background:#f8fafd;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e0e8f0">
+            <span id="alsideTierFin_polarboard" style="font-size:11px;color:#d4860a"></span>
+            <span style="font-size:13px;font-weight:800;color:#1a3a5c">Total: <span id="alsideTierTotal_polarboard">$0.00</span></span>
+          </div>
+        </div>
+        <!-- TIER 3: Charter Oak -->
+        <div style="border:1px solid #b0c4de;border-radius:8px;margin-bottom:8px;overflow:hidden">
+          <div style="background:#2d6a9f;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+            <span style="font-weight:700;font-size:13px">Option 3 — Charter Oak (.046)</span>
+            <button onclick="autoFillAlsideTier('charteroak')" style="background:#e8500a;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer">⚡ Auto-Fill</button>
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:#f4f7fb"><th style="padding:6px 8px;font-size:11px;text-align:left;font-weight:700;color:#1a3a5c">Product</th><th style="padding:6px 8px;font-size:11px;text-align:center;font-weight:700;color:#1a3a5c">Qty</th><th style="padding:6px 8px;font-size:11px;text-align:right;font-weight:700;color:#1a3a5c">Total</th><th style="width:28px"></th></tr></thead>
+            <tbody id="alsideTierBody_charteroak"></tbody>
+          </table>
+          <div style="padding:8px 12px;background:#f8fafd;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e0e8f0">
+            <span id="alsideTierFin_charteroak" style="font-size:11px;color:#d4860a"></span>
+            <span style="font-size:13px;font-weight:800;color:#1a3a5c">Total: <span id="alsideTierTotal_charteroak">$0.00</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Quote Items -->
     <div class="card">
       <h3>📝 Quote Line Items</h3>
@@ -666,9 +725,8 @@
       </div>
       <div class="btn-row no-print">
         <button class="btn btn-accent" onclick="generateContract()">📄 Generate Contract</button>
-        <button class="btn" style="background:#2e7d32;color:#fff;border:none;cursor:pointer" onclick="generateFullPDF()">📋 Full PDF Package</button>
         <button class="btn" style="background:#1565c0;color:#fff;border:none;cursor:pointer" onclick="openSendModal()">📧 Send for Signature</button>
-        <button class="btn btn-primary" onclick="window.print()">🖨️ Print / PDF</button>
+        <button class="btn btn-primary" onclick="printQuote()">🖨️ Print / PDF</button>
         <button class="btn btn-outline" onclick="saveQuote()">💾 Save</button>
         <button class="btn btn-outline" onclick="loadQuote()">📂 My Quotes</button>
         <button class="btn btn-outline" onclick="clearQuote()">+ New Quote</button>
@@ -891,7 +949,7 @@
       </div>
     </div>
     <div style="padding:20px 22px">
-      <div id="photoReminderGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;min-height:60px"></div>
+      <div id="photoReminderGrid" style="max-height:280px;overflow-y:auto;margin-bottom:14px;min-height:40px"></div>
       <div id="photoReminderMsg" style="font-size:13px;color:#1e2a38;line-height:1.6;background:#fff7e0;border:1px solid #f0c040;border-radius:8px;padding:12px;margin-bottom:16px"></div>
       <div style="display:flex;gap:10px">
         <button onclick="addPhotosFromReminder()" style="flex:1;padding:10px;border-radius:7px;border:2px solid #1a3a5c;background:#fff;color:#1a3a5c;font-size:13px;font-weight:700;cursor:pointer">＋ Add Photos First</button>
@@ -1190,6 +1248,31 @@ let TEMPLATES = {
     dimItems: { sidingCorners:'sidcorn', fasciaLF:'facia', soffitSQ:'vinylsoffit', gutterLF:'gutter5' },
     pitchItems: {}, layerItem: null,
   },
+  'alside-comparison': {
+    id: 'alside-comparison', name: 'Alside Comparison', label: 'Alside Siding — 3-Tier Comparison', type: 'alside_comparison', timeline: '13 to 17 weeks from final measure',
+    isComparison: true,
+    description: 'Side-by-side Alside siding comparison — three options presented in order so the customer can choose the level that fits their budget and goals.\n\n*Mounting blocks will be in the same color as the siding color chosen.',
+    warranty: 'See individual option warranty details below.',
+    colorFields: [
+      {id:'sidingStyle',       label:'Siding Style',                  options:'siding_style', hint:'DL or Straight Lap'},
+      {id:'sidingColor',       label:'Siding Color',                  options:'siding_ody'},
+      {id:'cornerPostColor',   label:'Corner Post Color',             options:'siding_ody'},
+      {id:'soffitColor',       label:'Vinyl Soffit Color',            options:'trim'},
+      {id:'faciaColor',        label:'Aluminum Fascia Wrap Color',    options:'trim'},
+      {id:'windowCapColor',    label:'Full Window Cap Color',         options:'trim'},
+      {id:'doorCapColor',      label:'Entry / Patio Door Cap Color',  options:'trim'},
+      {id:'garageDoorCapColor',label:'Garage Door Cap Color',         options:'trim'},
+      {id:'gutterColor',       label:'Gutter Color',                  options:'gutter'},
+    ],
+    fixedItems: ['sidfastn','delivery','permits','timeline13to17'],
+    dimItems: { sidingCorners:'sidcorn', fasciaLF:'facia', soffitSQ:'vinylsoffit', gutterLF:'gutter5' },
+    pitchItems: {}, layerItem: null,
+    tiers: [
+      { key:'housewrap',  name:'Option 1 — House Wrap (.044)',        mainProductId:'odysseywrap', warranty:'10-year labor warranty on standard colors only. Lifetime Manufacturer Warranty. *See warranty for complete details.' },
+      { key:'polarboard', name:'Option 2 — Polar Board (.044 + 3/8")',mainProductId:'odyssey',     warranty:'10-year labor warranty on standard colors only. Lifetime Manufacturer Warranty. *See warranty for complete details.' },
+      { key:'charteroak', name:'Option 3 — Charter Oak (.046)',       mainProductId:'590da916',    warranty:'Lifetime Warranty Parts and Labor. 25-year transferable pro-rated.' },
+    ],
+  },
 };
 
 // ============================================================
@@ -1264,13 +1347,16 @@ let activeCategory = 'All';
 let activeTemplate = null;
 let colorSelections = {};
 let discountAmt     = 0;   // dollar amount of discount applied
-let _pendingLoadId  = null; // quote ID to load after data is ready
+let _pendingLoadId    = null;  // quote ID to load after data is ready
+let _pendingAutoPrint = false; // auto-trigger print after load (from ?autoprint=1)
 let allFinProviders    = [];   // loaded from DB
 let selectedProviderId = null;
 let selectedPlanIds    = new Set(); // multi-select: set of planId strings
 
 // ── Photo state ───────────────────────────────────────────────
-let quotePhotos = [];  // array of { id, url, filename, caption, sort_order }
+let quotePhotos = [];  // array of { id, url, filename, caption, sort_order, notes }
+let alsideTiers = null;        // { housewrap:[...], polarboard:[...], charteroak:[...] }
+let isAlsideComparison = false;
 let currentSession = null; // Supabase session, set in updateAuthUI
 
 // ── Mobile tab switching ──────────────────────────────────────
@@ -1305,7 +1391,7 @@ if ('serviceWorker' in navigator) {
 // ============================================================
 window.onload = async function() {
   document.getElementById('quoteDate').value = new Date().toLocaleDateString('en-US');
-  document.getElementById('quoteNum').value = 'RHE-' + Date.now().toString().slice(-6);
+  // Quote number is auto-assigned by DB on save — leave blank until then
 
   // Auth state listener — fires when session is detected from URL hash or storage
   _supa.auth.onAuthStateChange((event, session) => {
@@ -1330,8 +1416,10 @@ window.onload = async function() {
   // Load pending quote now that PRODUCTS + TEMPLATES are ready
   if (_pendingLoadId) {
     const id = _pendingLoadId;
-    _pendingLoadId = null;
-    loadQuoteById(id);
+    const doPrint = _pendingAutoPrint;
+    _pendingLoadId    = null;
+    _pendingAutoPrint = false;
+    loadQuoteById(id).then(() => { if (doPrint) printQuote(); });
   }
 };
 
@@ -1377,20 +1465,22 @@ async function loadTemplatesFromDB() {
 }
 
 function renderTemplateGrid() {
-  const TYPE_ORDER = ['roof', 'siding', 'windows', 'doors', 'gutters'];
+  const TYPE_ORDER = ['roof', 'siding', 'alside_comparison', 'windows', 'doors', 'gutters'];
   const TYPE_LABELS = {
-    roof:    'Roofing',
-    siding:  'Siding',
-    windows: 'Windows',
-    doors:   'Doors',
-    gutters: 'Gutters'
+    roof:              'Roofing',
+    siding:            'Siding',
+    alside_comparison: 'Siding — Comparison',
+    windows:           'Windows',
+    doors:             'Doors',
+    gutters:           'Gutters',
   };
   const TYPE_ICONS = {
-    roof:    '🏠',
-    siding:  '🧱',
-    windows: '🪟',
-    doors:   '🚪',
-    gutters: '🏗️'
+    roof:              '🏠',
+    siding:            '🧱',
+    alside_comparison: '📊',
+    windows:           '🪟',
+    doors:             '🚪',
+    gutters:           '🏗️',
   };
 
   // Group by type in display order
@@ -1460,7 +1550,8 @@ function updateAuthUI(session) {
     const loadId = urlParams.get('load');
     if (loadId) {
       history.replaceState(null, '', window.location.pathname);
-      _pendingLoadId = loadId; // will be picked up after loadProductsFromDB / loadTemplatesFromDB
+      _pendingLoadId   = loadId; // will be picked up after loadProductsFromDB / loadTemplatesFromDB
+      _pendingAutoPrint = urlParams.get('autoprint') === '1';
     }
     // Pre-fill customer info when coming from Property Dashboard "New Quote"
     if (urlParams.get('prefill') === '1') {
@@ -1508,19 +1599,430 @@ function updateAuthUI(session) {
 function selectTemplate(id) {
   activeTemplate = TEMPLATES[id] || null;
   colorSelections = {};
+  isAlsideComparison = false;
 
-  // Update tab UI
   document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('active'));
-  const bar = document.getElementById('autoQuoteBar');
+  const bar         = document.getElementById('autoQuoteBar');
+  const alsideSection = document.getElementById('alsideSection');
+
   if (activeTemplate) {
-    document.getElementById('tpl-' + id).classList.add('active');
+    const tplCard = document.getElementById('tpl-' + id);
+    if (tplCard) tplCard.classList.add('active');
     document.getElementById('statusTemplate').textContent = '📐 ' + activeTemplate.label;
-    setProjectType(activeTemplate.type === 'siding' ? 'siding' : 'roof');
-    buildColorFields();
-    if (bar) bar.style.display = 'block';
+
+    if (activeTemplate.type === 'alside_comparison') {
+      isAlsideComparison = true;
+      setProjectType('siding');
+      buildColorFields();
+      if (bar) bar.style.display = 'none';
+      if (alsideSection) alsideSection.style.display = 'block';
+      if (!alsideTiers) alsideTiers = { housewrap: [], polarboard: [], charteroak: [] };
+      renderAlsideTiers();
+    } else {
+      isAlsideComparison = false;
+      alsideTiers = null;
+      setProjectType(activeTemplate.type === 'siding' ? 'siding' : 'roof');
+      buildColorFields();
+      if (bar) bar.style.display = 'block';
+      if (alsideSection) alsideSection.style.display = 'none';
+    }
   } else {
+    isAlsideComparison = false;
+    alsideTiers = null;
     if (bar) bar.style.display = 'none';
+    if (alsideSection) alsideSection.style.display = 'none';
   }
+}
+
+// ============================================================
+// ALSIDE COMPARISON — tier management
+// ============================================================
+function autoFillAlsideTier(tierKey) {
+  const tpl = activeTemplate;
+  if (!tpl || !tpl.tiers || !alsideTiers) return;
+  if (!sidingSQ) { alert('Enter siding sq ft first (in the sidebar measurements).'); return; }
+  const tier = tpl.tiers.find(t => t.key === tierKey);
+  if (!tier) return;
+
+  const items = [];
+  const mainProd = PRODUCTS.find(p => p.id === tier.mainProductId);
+  if (mainProd) items.push({ product: mainProd, qty: parseFloat(sidingSQ), note: '' });
+
+  // Fixed items (fasteners, delivery, permits, timeline)
+  (tpl.fixedItems || []).forEach(fid => {
+    const fp = PRODUCTS.find(p => p.id === fid);
+    if (fp) items.push({ product: fp, qty: 1, note: '' });
+  });
+
+  // Dimension-based items
+  const dims = tpl.dimItems || {};
+  const dimFields = {
+    sidingCorners: { elId:'sidingCorners', pid:dims.sidingCorners, isInt:true },
+    fasciaLF:      { elId:'fasciaLF',      pid:dims.fasciaLF },
+    soffitSQ:      { elId:'soffitSQ',      pid:dims.soffitSQ },
+    gutterLF:      { elId:'gutterLF',      pid:dims.gutterLF },
+  };
+  Object.values(dimFields).forEach(({ elId, pid, isInt }) => {
+    if (!pid) return;
+    const el  = document.getElementById(elId);
+    const qty = isInt ? parseInt(el?.value||'0') : parseFloat(el?.value||'0');
+    if (!qty) return;
+    const prod = PRODUCTS.find(p => p.id === pid);
+    if (prod) items.push({ product: prod, qty, note: '' });
+  });
+
+  alsideTiers[tierKey] = items;
+  renderAlsideTiers();
+}
+
+function removeTierItem(tierKey, idx) {
+  if (!alsideTiers || !alsideTiers[tierKey]) return;
+  alsideTiers[tierKey].splice(idx, 1);
+  renderAlsideTiers();
+}
+
+function getTierTotal(tierKey) {
+  if (!alsideTiers || !alsideTiers[tierKey]) return 0;
+  return alsideTiers[tierKey].reduce((s, i) => s + i.product.price * i.qty, 0);
+}
+
+function renderAlsideTiers() {
+  const tpl = activeTemplate;
+  if (!tpl || !tpl.tiers || !alsideTiers) return;
+  const down = parseFloat(document.getElementById('moneyDown')?.value) || 0;
+  tpl.tiers.forEach(tier => {
+    const items   = alsideTiers[tier.key] || [];
+    const total   = getTierTotal(tier.key);
+    const financed = Math.max(0, total - down);
+    const bodyEl  = document.getElementById('alsideTierBody_' + tier.key);
+    const totalEl = document.getElementById('alsideTierTotal_' + tier.key);
+    const finEl   = document.getElementById('alsideTierFin_' + tier.key);
+    if (bodyEl) {
+      bodyEl.innerHTML = items.length
+        ? items.map((item, i) => `
+          <tr style="border-bottom:1px solid #eef2f8">
+            <td style="padding:5px 8px;font-size:12px">${escHtmlPE(item.product.name)}</td>
+            <td style="padding:5px 8px;text-align:center;font-size:12px;color:#6b7a90">${item.qty} ${item.product.unit}</td>
+            <td style="padding:5px 8px;text-align:right;font-size:12px;font-weight:700">$${(item.product.price * item.qty).toFixed(2)}</td>
+            <td style="padding:5px 8px;text-align:center">
+              <button onclick="removeTierItem('${tier.key}',${i})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:16px;line-height:1">×</button>
+            </td>
+          </tr>`).join('')
+        : '<tr><td colspan="4" style="padding:12px;text-align:center;color:#aaa;font-size:12px">Click ⚡ Auto-Fill to populate</td></tr>';
+    }
+    if (totalEl) totalEl.textContent = '$' + total.toFixed(2);
+    if (finEl) {
+      const monthly = calcFinancing(total);
+      finEl.innerHTML = (monthly && document.getElementById('useFinancing')?.checked)
+        ? `est. $${monthly.toFixed(2)}/mo` : '';
+    }
+  });
+}
+
+// ============================================================
+// SAVE QUOTE — persist to Supabase (was missing!)
+// ============================================================
+async function saveQuote() {
+  const { data: sd } = await _supa.auth.getSession();
+  if (!sd?.session) { alert('Please sign in to save.'); return; }
+
+  const name  = (document.getElementById('custName')?.value  || '').trim();
+  const addr  = (document.getElementById('custAddr')?.value  || '').trim();
+  const city  = (document.getElementById('custCity')?.value  || '').trim();
+  const zip   = (document.getElementById('custZip')?.value   || '').trim();
+  const phone = (document.getElementById('custPhone')?.value || '').trim();
+  const email = (document.getElementById('custEmail')?.value || '').trim();
+  const qnum  = (document.getElementById('quoteNum')?.value  || '').trim();
+  const notes = (document.getElementById('projectNotes')?.value || '').trim();
+  const grand   = getGrandTotal();
+  const preDisc = getPreDiscountTotal();
+  const down    = parseFloat(document.getElementById('moneyDown')?.value) || 0;
+  const useFinancing = document.getElementById('useFinancing')?.checked || false;
+
+  const payload = {
+    tenant_id:          TENANT_ID,
+    created_by:         sd.session.user.id,
+    quote_number:       qnum || undefined,
+    customer_name:      name,
+    customer_address:   [addr, city, zip].filter(Boolean).join(', '),
+    customer_phone:     phone,
+    customer_email:     email,
+    template_id:        activeTemplate?.id || null,
+    items:              quoteItems.map(i => ({ id: i.product.id, qty: i.qty, note: i.note || '' })),
+    color_selections:   colorSelections,
+    totals:             { subtotal: preDisc, discount: discountAmt, grand },
+    notes:              notes,
+    dimension_data:     { roofSQ, sidingSQ, pitchSurcharge },
+    payment_data:       { down, useFinancing, discountAmt, selectedPlanIds: [...selectedPlanIds] },
+    satellite_image_url: satelliteImgUrl || null,
+    comparison_tiers:   alsideTiers || null,
+  };
+
+  try {
+    if (currentQuoteId) {
+      const r = await fetch(SUPABASE_URL + '/rest/v1/quotes?id=eq.' + currentQuoteId, {
+        method: 'PATCH',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + sd.session.access_token, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+    } else {
+      // New quote — always starts as draft
+      payload.status = 'draft';
+      // Auto-assign a quote number if blank
+      if (!payload.quote_number) {
+        const nr = await fetch(SUPABASE_URL + '/rest/v1/rpc/next_quote_number', {
+          method: 'POST', body: '{}',
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + sd.session.access_token, 'Content-Type': 'application/json' },
+        });
+        const newNum = nr.ok ? await nr.json() : null;
+        if (newNum) {
+          payload.quote_number = newNum;
+          const el = document.getElementById('quoteNum');
+          if (el) el.value = newNum;
+        }
+      }
+      const r = await fetch(SUPABASE_URL + '/rest/v1/quotes', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + sd.session.access_token, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const [saved] = await r.json();
+      currentQuoteId = saved.id;
+    }
+    const btn = document.querySelector('button[onclick="saveQuote()"]');
+    if (btn) { const orig = btn.textContent; btn.textContent = '✓ Saved'; setTimeout(() => { btn.textContent = orig; }, 1500); }
+  } catch (err) {
+    console.error('[saveQuote]', err);
+    alert('Save failed: ' + err.message);
+  }
+}
+
+// ── Status helpers ───────────────────────────────────────────
+async function _patchQuoteStatus(status) {
+  if (!currentQuoteId) return;
+  const { data: sd } = await _supa.auth.getSession();
+  if (!sd?.session) return;
+  await fetch(SUPABASE_URL + '/rest/v1/quotes?id=eq.' + currentQuoteId, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + sd.session.access_token,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify({ status }),
+  }).catch(e => console.warn('[_patchQuoteStatus]', e));
+}
+
+// Silent save when generating/printing a contract — only fires if no quote saved yet
+async function autoSaveOnContract() {
+  if (!currentQuoteId && quoteItems.length) {
+    await saveQuote().catch(() => {});
+  }
+}
+
+// ============================================================
+// LOAD QUOTE MODAL — open, populate, filter, close
+// ============================================================
+let _allLoadQuotes = [];
+
+async function loadQuote() {
+  const modal = document.getElementById('loadQuoteModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  const tbody = document.getElementById('lqBody');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#999">Loading…</td></tr>';
+
+  const { data: sd } = await _supa.auth.getSession();
+  if (!sd?.session) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#c00">Please sign in first.</td></tr>';
+    return;
+  }
+
+  const r = await fetch(
+    SUPABASE_URL + '/rest/v1/quotes?tenant_id=eq.' + TENANT_ID
+      + '&select=id,quote_number,customer_name,customer_address,template_id,totals,created_at,status,signing_status'
+      + '&order=created_at.desc&limit=200',
+    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + sd.session.access_token } }
+  );
+  if (!r.ok) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#c00">Failed to load quotes.</td></tr>';
+    return;
+  }
+  _allLoadQuotes = await r.json();
+  renderLoadQuoteRows(_allLoadQuotes);
+}
+
+function renderLoadQuoteRows(quotes) {
+  const tbody = document.getElementById('lqBody');
+  if (!quotes.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#999">No saved quotes found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = quotes.map(q => {
+    const grand = q.totals?.grand != null ? '$' + Number(q.totals.grand).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+    const date  = q.created_at ? new Date(q.created_at).toLocaleDateString('en-US') : '—';
+    const tplName = (TEMPLATES[q.template_id]?.label || q.template_id || '—');
+    const status = q.status === 'signed' ? '<span style="color:#2e7d32;font-weight:700">✓ Signed</span>'
+                 : q.status === 'void'   ? '<span style="color:#c62828;font-weight:700">Void</span>'
+                 : q.status === 'sent'   ? '<span style="color:#e65100;font-weight:600">Sent</span>'
+                 : '<span style="color:#999">Draft</span>';
+    return `<tr onclick="loadQuoteById('${q.id}')" style="cursor:pointer;border-bottom:1px solid #eef2f8" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background=''">
+      <td style="padding:10px 12px;font-weight:700;color:#1a3a5c;white-space:nowrap">${q.quote_number || '—'}</td>
+      <td style="padding:10px 12px"><div style="font-weight:600">${q.customer_name || '—'}</div><div style="font-size:11px;color:#888">${q.customer_address || ''}</div></td>
+      <td style="padding:10px 12px;font-size:11px;color:#555">${tplName}</td>
+      <td style="padding:10px 12px;font-size:11px;color:#888;white-space:nowrap">${date}</td>
+      <td style="padding:10px 12px;text-align:right;font-weight:700">${grand}</td>
+      <td style="padding:10px 12px">${status}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterLoadQuotes() {
+  const q = (document.getElementById('lqSearch')?.value || '').toLowerCase();
+  if (!q) { renderLoadQuoteRows(_allLoadQuotes); return; }
+  renderLoadQuoteRows(_allLoadQuotes.filter(r =>
+    (r.customer_name || '').toLowerCase().includes(q) ||
+    (r.quote_number  || '').toLowerCase().includes(q) ||
+    (r.customer_address || '').toLowerCase().includes(q)
+  ));
+}
+
+function closeLoadModal() {
+  const modal = document.getElementById('loadQuoteModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// ============================================================
+// LOAD QUOTE BY ID — restore full quote from Supabase
+// ============================================================
+async function loadQuoteById(id) {
+  try {
+  _showToast('Loading quote…', '#2e6ea6');
+  const { data: sd } = await _supa.auth.getSession();
+  if (!sd?.session) { _showToast('Not signed in', '#c00'); return; }
+  const r = await fetch(SUPABASE_URL + '/rest/v1/quotes?id=eq.' + id + '&select=*&limit=1', {
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + sd.session.access_token },
+  });
+  if (!r.ok) { _showToast('Fetch failed: HTTP ' + r.status, '#c00'); return; }
+  const rows = await r.json();
+  const q = rows[0];
+  if (!q) { _showToast('Quote not found in DB', '#c00'); return; }
+
+  closeLoadModal();
+
+  // Customer fields
+  const addrParts = (q.customer_address || '').split(', ');
+  const setVal = (id2, v) => { const el = document.getElementById(id2); if (el) el.value = v || ''; };
+  setVal('custName',  q.customer_name);
+  setVal('custAddr',  addrParts[0] || '');
+  setVal('custCity',  addrParts[1] || '');
+  setVal('custZip',   addrParts[2] || '');
+  setVal('custPhone', q.customer_phone);
+  setVal('custEmail', q.customer_email);
+  setVal('quoteNum',  q.quote_number);
+  setVal('projectNotes', q.notes);
+
+  // Items — support both storage formats:
+  //   new: {id, qty, note}  (saveQuote maps i.product.id → id)
+  //   legacy: {product_id, name, price, unit, cat, tax, qty, note, line_total}
+  quoteItems = (q.items || []).map(item => {
+    const pid = item.id || item.product_id;
+    const p = PRODUCTS.find(x => x.id === pid) || (item.name ? {
+      id: pid, name: item.name, price: item.price || 0,
+      unit: item.unit || 'EA', cat: item.cat || '', tax: item.tax || 'n',
+      mat: null, labor: null, margin: null
+    } : null);
+    return p ? { product: p, qty: item.qty, note: item.note || '' } : null;
+  }).filter(Boolean);
+
+  // Dimension data
+  if (q.dimension_data) {
+    roofSQ         = q.dimension_data.roofSQ         || 0;
+    sidingSQ       = q.dimension_data.sidingSQ       || 0;
+    pitchSurcharge = q.dimension_data.pitchSurcharge || 0;
+    setVal('roofSQ',   roofSQ   || '');
+    setVal('sidingSQ', sidingSQ || '');
+  }
+
+  // Payment data
+  if (q.payment_data) {
+    discountAmt = q.payment_data.discountAmt || 0;
+    setVal('moneyDown',      q.payment_data.down || '');
+    setVal('discountDollar', discountAmt || '');
+    const finEl = document.getElementById('useFinancing');
+    if (finEl) { finEl.checked = q.payment_data.useFinancing || false; toggleFinancing(); }
+    selectedPlanIds = new Set(q.payment_data.selectedPlanIds || []);
+  }
+
+  // Satellite image
+  if (q.satellite_image_url) {
+    satelliteImgUrl = q.satellite_image_url;
+    const img = document.getElementById('sat-img');
+    const preview = document.getElementById('sat-preview');
+    if (img && preview) {
+      img.src = satelliteImgUrl; img.style.display = 'block';
+      preview.style.display = 'block';
+      const loading = document.getElementById('sat-loading');
+      if (loading) loading.style.display = 'none';
+    }
+  }
+
+  // Template + colors
+  alsideTiers = q.comparison_tiers || null;
+  isAlsideComparison = false;
+  if (q.template_id && TEMPLATES[q.template_id]) {
+    // Temporarily suppress tier re-init in selectTemplate
+    const savedTiers = alsideTiers;
+    selectTemplate(q.template_id);
+    alsideTiers = savedTiers;
+    if (activeTemplate?.type === 'alside_comparison' && alsideTiers) {
+      isAlsideComparison = true;
+      const alsideSection = document.getElementById('alsideSection');
+      if (alsideSection) alsideSection.style.display = 'block';
+      renderAlsideTiers();
+    }
+  }
+  colorSelections = q.color_selections || {};
+  Object.keys(colorSelections).forEach(key => {
+    const el = document.getElementById('color_' + key);
+    if (el) el.value = colorSelections[key];
+  });
+
+  currentQuoteId = q.id;
+  renderQuote();
+  await loadPhotos();
+
+  // Mobile: jump to quote builder tab
+  const quoteBtn = document.querySelectorAll('.mobile-tab-bar button')[1];
+  if (quoteBtn) switchMobileTab('quote', quoteBtn);
+
+  // Scroll quote items into view on desktop
+  const qi = document.getElementById('quoteItems');
+  if (qi) qi.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  _showToast('✓ Quote loaded: ' + (q.quote_number || q.id.slice(0,8)) + ' — ' + (q.customer_name || ''), '#2e8b57');
+  } catch(err) {
+    console.error('loadQuoteById failed:', err);
+    _showToast('Error: ' + err.message, '#c00');
+  }
+}
+
+function _showToast(msg, bg) {
+  let t = document.getElementById('_toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_toast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;color:#fff;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,0.3);transition:opacity 0.3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = bg || '#1a3a5c';
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
 }
 
 function runAutoQuote() {
@@ -2079,7 +2581,7 @@ async function loadPhotos() {
   const { data: sd } = await _supa.auth.getSession();
   if (!sd?.session) return;
   const r = await fetch(
-    SUPABASE_URL + '/rest/v1/quote_photos?quote_id=eq.' + currentQuoteId + '&select=id,url,filename,caption,sort_order&order=sort_order.asc,created_at.asc',
+    SUPABASE_URL + '/rest/v1/quote_photos?quote_id=eq.' + currentQuoteId + '&select=id,url,storage_path,filename,caption,sort_order,notes&order=sort_order.asc,created_at.asc',
     { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + sd.session.access_token } }
   );
   quotePhotos = r.ok ? (await r.json()) : [];
@@ -2173,19 +2675,25 @@ async function deletePhoto(photoId, storagePath) {
 
 // ── Pre-contract photo reminder ───────────────────────────────
 function generateContract() {
-  // Show the photo reminder modal before actually generating
   const modal = document.getElementById('photoReminderModal');
-  const grid  = document.getElementById('photoReminderGrid');
+  const list  = document.getElementById('photoReminderGrid');
   const msg   = document.getElementById('photoReminderMsg');
 
   if (quotePhotos.length === 0) {
-    msg.innerHTML = '⚠️ <strong>No photos added yet.</strong> Property photos help customers connect with the project and appear in the printed contract and all signed copies. You can still generate without them.';
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:10px;color:#999;font-size:12px">No photos uploaded</div>';
+    msg.innerHTML = '⚠️ <strong>No photos added yet.</strong> Property photos appear in the printed contract and all signed copies. You can still generate without them.';
+    list.innerHTML = '<div style="text-align:center;padding:10px;color:#999;font-size:12px">No photos uploaded</div>';
   } else {
-    msg.innerHTML = `✅ <strong>${quotePhotos.length} photo${quotePhotos.length !== 1 ? 's' : ''} ready.</strong> These will be included on a dedicated page in the contract and all signed copies. Add more or continue.`;
-    grid.innerHTML = quotePhotos.map(p => `
-      <div style="border-radius:5px;overflow:hidden;aspect-ratio:1;background:#e8edf5">
-        <img src="${p.url}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">
+    msg.innerHTML = `✅ <strong>${quotePhotos.length} photo${quotePhotos.length !== 1 ? 's' : ''} attached.</strong> Add inspection notes to each photo — they'll appear in the contract under each image.`;
+    list.innerHTML = quotePhotos.map(p => `
+      <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #e8edf5">
+        <img src="${p.url}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:6px;flex-shrink:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtmlPE(p.caption||p.filename||'Photo')}</div>
+          <textarea data-photo-id="${p.id}" rows="2"
+            placeholder="Inspection notes for this photo (optional)…"
+            style="width:100%;font-size:12px;border:1px solid #d0d8e8;border-radius:5px;padding:5px 7px;resize:vertical;box-sizing:border-box;font-family:inherit"
+          >${escHtmlPE(p.notes||'')}</textarea>
+        </div>
       </div>`).join('');
   }
 
@@ -2199,9 +2707,38 @@ function addPhotosFromReminder() {
   document.getElementById('photoUploadLabel').click();
 }
 
-function confirmGenerateContract() {
+async function confirmGenerateContract() {
   document.getElementById('photoReminderModal').style.display = 'none';
+  await savePhotoNotes();
   startOnsiteSigning();
+}
+
+async function savePhotoNotes() {
+  if (!quotePhotos.length) return;
+  const { data: sd } = await _supa.auth.getSession();
+  if (!sd?.session) return;
+  const textareas = document.querySelectorAll('#photoReminderGrid textarea[data-photo-id]');
+  const updates = [];
+  textareas.forEach(ta => {
+    const id    = ta.getAttribute('data-photo-id');
+    const notes = ta.value.trim();
+    // update local cache too
+    const photo = quotePhotos.find(p => p.id === id);
+    if (photo) photo.notes = notes;
+    updates.push(
+      fetch(SUPABASE_URL + '/rest/v1/quote_photos?id=eq.' + id, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + sd.session.access_token,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({ notes }),
+      })
+    );
+  });
+  await Promise.allSettled(updates);
 }
 
 async function startOnsiteSigning() {
@@ -2890,10 +3427,13 @@ function buildFullPDFHtml() {
   const _inspCells = quotePhotos.length
     ? quotePhotos.map((p, i) => {
         const label = p.caption || p.filename || _inspSlots[i] || ('Photo ' + (i + 1));
+        const notesHtml = p.notes
+          ? `<div style="margin-top:6px;font-size:10px;color:#3a4a5c;line-height:1.5;white-space:pre-wrap">${h(p.notes)}</div>`
+          : '';
         return `<div class="insp-cell">
           <img src="${p.url}" alt="${h(label)}"
                style="width:100%;height:190px;object-fit:cover;border-radius:4px;display:block;margin-bottom:8px">
-          <div class="insp-note"><strong>${h(label)}</strong></div>
+          <div class="insp-note"><strong>${h(label)}</strong>${notesHtml}</div>
         </div>`;
       }).join('')
     : _inspSlots.map((slot, i) => `
@@ -3159,1077 +3699,373 @@ function buildFullPDFHtml() {
     ${initBox()}`);
   const pgEPA2 = pg(`
     <div class="epa-omg-box">
-      <p>This collection of information is approved by OMB under the Paperwork Reduction Act, 44 U.S.C. 3501 et seq. (OMB Control No. 2070-0195). Responses to this collection of information are mandatory (40 CFR 745). An agency may not conduct or sponsor, and a person is not required to respond to, a collection of information unless it displays a currently valid OMB control number. The public reporting and recordkeeping burden for this collection of information is estimated to range from 0.2 to 0.5 hours per response. Send comments on the Agency&rsquo;s need for this information, the accuracy of the provided burden estimates and any suggested methods for minimizing respondent burden including through the use of automated collection techniques to the Director, Regulatory Support Division, U.S. Environmental Protection Agency (2821T), 1200 Pennsylvania Ave., NW, Washington, D.C. 20460. Include the OMB control number in any correspondence. Do not send the completed form to this address.</p>
+      <p>This collection of information is approved by OMB under the Paperwork Reduction Act, 44 U.S.C. 3501 et seq. (OMB Control No. 2070-0195). Responses to this collection of information are mandatory (40 CFR 745). An agency may not conduct or sponsor, and a person is not required to respond to, a collection of information unless it displays a currently valid OMB control number. The public reporting and recordkeeping burden for this collection of information is estimated to range from 0.2 to 0.5 hours per response. Send comments on the Agency&rsquo;s need for this information, the accuracy of the provided burden estimates, and any suggested methods for minimizing respondent burden, including through use of automated collection techniques, to the Director, Regulatory Support Division, U.S. Environmental Protection Agency (2821T), 1200 Pennsylvania Ave., NW, Washington, D.C. 20460. Include the OMB control number in any correspondence. Do not send the completed form to this address.</p>
     </div>
     ${initBox()}`);
 
   /* ════════════════════════════════════════════════════════
-     DOLLAR BANK REFERRAL (siding only)
+     WRAP T&C STRINGS IN PAGES
      ════════════════════════════════════════════════════════ */
-  const pgDollarBank = pg(`
-    <div style="text-align:center;padding-bottom:14px;margin-bottom:16px;border-bottom:2px solid #1a6bc4">
-      <div style="font-size:26px;font-weight:900;color:#1a3a5c">Dollar<span style="color:#1a6bc4">Bank</span><sup style="font-size:13px">&reg;</sup>&nbsp;<span style="font-size:14px;font-weight:400">Loan Center</span></div>
-    </div>
-    <h3 style="text-align:center;color:#c0392b;margin-bottom:14px">Customer Referral Form</h3>
-    <p style="font-size:11px">For more than 167 years, Dollar Bank has been helping our customers choose the right loan for their needs. Please complete the form below. A Dollar Bank Loan Center Representative will be contacting them shortly.</p>
-    <p class="db-sec">Customer Information</p>
-    <div class="db-row">Name(s): <span class="db-ln"></span></div>
-    <div class="db-row">Phone # &bull; Home: <span class="db-ln-sm"></span> &bull; Work: <span class="db-ln-sm"></span> &bull; Cell: <span class="db-ln-sm"></span></div>
-    <div class="db-row">E-mail: <span class="db-ln"></span></div>
-    <div style="margin:10px 0;font-size:10px">_______ [initials]&nbsp; I/we consent for the above information to be shared with Dollar Bank, Federal Savings Bank and consent to be contacted by Dollar Bank, Federal Savings Bank.</div>
-    <p class="db-sec">Loan Information</p>
-    <div class="db-row">&bull; Timeline Credit Card &nbsp;&nbsp; &bull; Loan Referral &nbsp;&nbsp; Amount: <span class="db-ln-sm"></span></div>
-    <p class="db-sec">Company Representative Information</p>
-    <div class="db-row">Company Representative: <span class="db-ln"></span></div>
-    <div class="db-row">Company Name: <strong>Renew Home Exteriors LLC</strong></div>
-    <div class="db-row">Vendor Code: <strong>1042-5804</strong></div>
-    <div class="db-row">Phone: <span class="db-ln-sm"></span></div>
-    <p class="db-sec">Dollar Bank Location: <strong style="color:#000">North Olmsted</strong></p>
-    <p class="db-sec">Loan Representative: <strong style="color:#000">Merrissa</strong>&nbsp;&nbsp; Phone: <strong style="color:#000">440-777-0012</strong>&nbsp;&nbsp; E-mail: <strong style="color:#000">mcreadon365@dollarbank.com</strong></p>
-    <div style="border:1px solid #ccc;padding:8px;margin-top:12px;font-size:10px">Dollar Bank Office Use Only:<br>
-      <div style="display:flex;gap:30px;margin-top:6px"><span>Date received: <span class="db-ln-sm"></span></span><span>Received by: <span class="db-ln-sm"></span></span></div>
-    </div>
-    <div style="font-size:9px;margin-top:10px">&bull; Equal Housing Lender. Member FDIC. &copy; 2022 Dollar Bank, Federal Savings Bank.</div>
-    ${initBox()}`);
+  const pgTC1 = pg(isRoofing ? rTC1 : sTC1);
+  const pgTC2 = pg(isRoofing ? rTC2 : sTC2);
+  const pgTC3 = pg(isRoofing ? rTC3 : sTC3);
 
   /* ════════════════════════════════════════════════════════
-     ASSEMBLE & OPEN
+     ALSIDE COMPARISON — 3 sequential pricing pages
      ════════════════════════════════════════════════════════ */
-  const tc1 = isRoofing ? rTC1 : sTC1;
-  const tc2 = isRoofing ? rTC2 : sTC2;
-  const tc3 = isRoofing ? rTC3 : sTC3;
+  let comparisonPages = '';
+  if (isAlsideComparison && alsideTiers && activeTemplate && activeTemplate.tiers) {
+    comparisonPages = activeTemplate.tiers.map(function(tier) {
+      const items = alsideTiers[tier.key] || [];
+      if (!items.length) return '';
+      let tierSub = 0;
+      const tierRows = items.map(function(item) {
+        const lt = item.product.price * item.qty;
+        tierSub += lt;
+        const qty = item.qty % 1 === 0 ? item.qty : parseFloat(item.qty).toFixed(2);
+        return '<tr><td class="dc">' + h(item.product.name) + '</td>'
+          + '<td class="qc">' + qty + ' ' + item.product.unit + '</td>'
+          + '<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-weight:700">' + fmt$(lt) + '</td></tr>';
+      }).join('');
+      const tierFinanced = Math.max(0, tierSub - down);
+      const tierFinBox = (useFinancing && _contractSelPlans.length) ? _contractSelPlans.map(function(pp) {
+        const mo = calcPlanMonthly(pp.pl, tierFinanced);
+        return '<div class="fin-box"><div class="fin-name">' + h(pp.prov.name) + '</div>'
+          + '<div class="fin-plan">' + h(pp.pl.description || '') + '</div>'
+          + '<div class="fin-mo">' + (mo !== null ? 'est. ' + fmt$(mo) + '/mo' : 'Contact provider') + '</div></div>';
+      }).join('') : '';
+      return pg(
+        '<h2 class="sec-title">' + h(tier.name) + '</h2>'
+        + '<div style="font-size:11px;color:#6b7a90;margin-bottom:12px">' + h(fullAddr) + ' &mdash; ' + h(custName) + '</div>'
+        + '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'
+        + '<thead><tr style="background:#1a3a5c;color:#fff">'
+        + '<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600">Product / Service</th>'
+        + '<th style="padding:7px 10px;text-align:center;font-size:11px;font-weight:600">Qty</th>'
+        + '<th style="padding:7px 10px;text-align:right;font-size:11px;font-weight:600">Total</th>'
+        + '</tr></thead><tbody>' + tierRows + '</tbody></table>'
+        + '<div class="price-wrap">'
+        + '<table class="tot-table"><tr class="grand-row"><td><strong>OPTION TOTAL</strong></td><td><strong>' + fmt$(tierSub) + '</strong></td></tr></table>'
+        + tierFinBox
+        + '<div class="pay-lines">'
+        + '<div class="pay-row"><span>Money Down:</span><span class="pay-amt">' + (down > 0 ? fmt$(down) : '$_____________') + '</span></div>'
+        + '<div class="pay-row"><span>' + (useFinancing ? 'Amount Financed' : 'Balance Due at Completion') + ':</span><span class="pay-amt">' + fmt$(tierFinanced) + '</span></div>'
+        + '</div>'
+        + '<div style="margin-top:14px;font-size:10px;color:#6b7a90;border-top:1px solid #e8edf5;padding-top:8px"><strong>Warranty:</strong> ' + h(tier.warranty) + '</div>'
+        + '</div>'
+        + initBox()
+      );
+    }).join('');
+  }
 
+  /* ════════════════════════════════════════════════════════
+     ASSEMBLE ALL PAGES
+     ════════════════════════════════════════════════════════ */
+  const pricingSection = (isAlsideComparison && comparisonPages) ? comparisonPages : pgPricing;
   const allPages = [
-    pgCover,
-    pgIntro, pgReviews, pgInspection,
-    pgProduct, pgPricing, pgExpect, pgAuth,
-    pg(tc1), pg(tc2), pg(tc3),
-    pgEPA1, pgEPA2,
-    ...(isSiding ? [pgDollarBank] : [])
+    pgCover, pgIntro, pgReviews, pgInspection, pgProduct,
+    pricingSection,
+    pgExpect, pgAuth, pgTC1, pgTC2, pgTC3, pgEPA1, pgEPA2
   ].join('\n');
 
-  const fullHtml = `<!DOCTYPE html>
+
+  /* ════════════════════════════════════════════════════════
+     CSS (embedded in returned document)
+     ════════════════════════════════════════════════════════ */
+  const css = [
+    '*{box-sizing:border-box;margin:0;padding:0}',
+    'body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#fff}',
+    '@page{size:letter;margin:0}',
+    '.page{width:8.5in;min-height:11in;padding:0.5in 0.6in;page-break-after:always;position:relative;overflow:hidden}',
+    '.page:last-child{page-break-after:auto}',
+    /* COVER */
+    '.cover-header{background:#1a3a5c;color:#fff;padding:28px 36px 20px;border-radius:4px 4px 0 0}',
+    '.cover-logo{font-size:22px;font-weight:800;letter-spacing:1px;color:#fff}',
+    '.cover-logo span{color:#e8500a}',
+    '.cover-tagline{font-size:11px;color:#a0b8d0;margin-top:3px;letter-spacing:0.5px}',
+    '.cover-hero{background:linear-gradient(135deg,#1a3a5c 0%,#2e6ea6 100%);color:#fff;padding:32px 36px;margin-top:0}',
+    '.cover-title{font-size:28px;font-weight:800;line-height:1.2;margin-bottom:8px}',
+    '.cover-subtitle{font-size:14px;color:#a0c4e8;margin-bottom:24px}',
+    '.cover-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}',
+    '.cover-info-box{background:rgba(255,255,255,0.1);border-radius:6px;padding:12px 16px}',
+    '.cover-info-label{font-size:10px;color:#7aabcc;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px}',
+    '.cover-info-value{font-size:13px;font-weight:700;color:#fff}',
+    '.cover-badge{display:inline-block;background:#e8500a;color:#fff;font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:0.5px;margin-top:8px}',
+    '.cover-body{padding:24px 36px}',
+    '.cover-section-title{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#2e6ea6;font-weight:700;margin-bottom:10px;border-bottom:2px solid #2e6ea6;padding-bottom:4px}',
+    '.cover-steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px}',
+    '.cover-step{text-align:center;padding:10px 8px;background:#f5f8fc;border-radius:6px}',
+    '.cover-step-num{font-size:18px;font-weight:800;color:#e8500a}',
+    '.cover-step-label{font-size:10px;color:#4a5a6c;margin-top:2px}',
+    '.cover-guarantee{background:#f0f8f0;border-left:4px solid #2e8b57;padding:10px 14px;border-radius:0 4px 4px 0;margin-bottom:16px}',
+    '.cover-guarantee-title{font-size:12px;font-weight:700;color:#2e8b57;margin-bottom:4px}',
+    '.cover-guarantee-text{font-size:11px;color:#3a5a4a;line-height:1.5}',
+    /* INTRO / ABOUT */
+    '.section-header{background:#1a3a5c;color:#fff;padding:10px 16px;border-radius:4px;margin-bottom:14px}',
+    '.section-header h2{font-size:14px;font-weight:700;letter-spacing:0.5px}',
+    '.intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}',
+    '.intro-card{background:#f5f8fc;border-radius:6px;padding:12px 14px;border-top:3px solid #2e6ea6}',
+    '.intro-card h3{font-size:11px;font-weight:700;color:#1a3a5c;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}',
+    '.intro-card p{font-size:11px;color:#3a4a5c;line-height:1.6}',
+    '.certs-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}',
+    '.cert-badge{background:#1a3a5c;color:#fff;font-size:9px;font-weight:700;padding:5px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:0.3px}',
+    /* REVIEWS */
+    '.reviews-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}',
+    '.review-card{background:#fff;border:1px solid #dce6f0;border-radius:6px;padding:12px 14px}',
+    '.review-stars{color:#e8500a;font-size:14px;letter-spacing:1px;margin-bottom:4px}',
+    '.review-text{font-size:11px;color:#3a4a5c;line-height:1.6;margin-bottom:8px;font-style:italic}',
+    '.review-author{font-size:10px;font-weight:700;color:#1a3a5c}',
+    '.review-source{font-size:9px;color:#7a8a9c}',
+    /* PRODUCT / SCOPE */
+    '.product-header{background:linear-gradient(135deg,#1a3a5c,#2e6ea6);color:#fff;padding:14px 18px;border-radius:4px;margin-bottom:14px}',
+    '.product-name{font-size:18px;font-weight:800;margin-bottom:2px}',
+    '.product-sub{font-size:11px;color:#a0c4e8}',
+    '.scope-section{margin-bottom:14px}',
+    '.scope-section h3{font-size:12px;font-weight:700;color:#1a3a5c;border-bottom:2px solid #e8500a;padding-bottom:4px;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px}',
+    '.scope-list{list-style:none;padding:0}',
+    '.scope-list li{font-size:11px;color:#2a3a4c;padding:4px 0 4px 16px;position:relative;border-bottom:1px solid #f0f4f8;line-height:1.5}',
+    '.scope-list li:before{content:"✓";position:absolute;left:0;color:#2e6ea6;font-weight:700}',
+    '.scope-list li:last-child{border-bottom:none}',
+    '.scope-note{background:#fff8f0;border-left:3px solid #e8500a;padding:8px 12px;border-radius:0 4px 4px 0;font-size:10px;color:#5a3a1a;line-height:1.5;margin-top:8px}',
+    /* PRICING */
+    '.price-page-header{background:#1a3a5c;color:#fff;padding:12px 18px;border-radius:4px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}',
+    '.price-page-title{font-size:15px;font-weight:700}',
+    '.price-page-quote{font-size:10px;color:#7aaac8;text-align:right}',
+    '.price-table{width:100%;border-collapse:collapse;margin-bottom:16px}',
+    '.price-table th{background:#1a3a5c;color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;padding:8px 10px;text-align:left}',
+    '.price-table th:last-child{text-align:right}',
+    '.price-table td{padding:8px 10px;border-bottom:1px solid #e8eef5;font-size:11px;color:#2a3a4c}',
+    '.price-table td:last-child{text-align:right;font-weight:600}',
+    '.price-table tr:nth-child(even) td{background:#f8fafc}',
+    '.price-totals{background:#f0f5fa;border-radius:4px;padding:12px 16px;margin-bottom:16px}',
+    '.price-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:#3a4a5c}',
+    '.price-row.total{border-top:2px solid #1a3a5c;margin-top:6px;padding-top:8px;font-size:14px;font-weight:800;color:#1a3a5c}',
+    '.price-row.discount{color:#2e8b57;font-weight:600}',
+    '.pay-options{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}',
+    '.pay-card{border:2px solid #dce6f0;border-radius:6px;padding:12px 14px}',
+    '.pay-card.featured{border-color:#e8500a;background:#fff8f5}',
+    '.pay-card-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#2e6ea6;margin-bottom:6px}',
+    '.pay-amt{font-weight:800;color:#1a3a5c;font-size:14px}',
+    '.pay-note{font-size:9px;color:#7a8a9c;margin-top:3px;line-height:1.4}',
+    /* INSPECTION / PHOTOS */
+    '.insp-grid{display:grid;gap:14px;margin-top:8px}',
+    '.insp-cell{break-inside:avoid}',
+    '.insp-note{font-size:11px;color:#3a4a5c;margin-top:4px;line-height:1.5}',
+    '.photo-placeholder{width:100%;height:80px;background:#e0e8f0;border:1px solid #c0ccd8;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#7a8a9c}',
+    /* T&C */
+    '.tc-section{margin-bottom:12px}',
+    '.tc-section h3{font-size:11px;font-weight:700;color:#1a3a5c;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px}',
+    '.tc-text{font-size:9.5px;color:#3a4a5c;line-height:1.6}',
+    '.tc-list{font-size:9.5px;color:#3a4a5c;line-height:1.6;padding-left:14px}',
+    /* EPA */
+    '.epa-header{background:#2e8b57;color:#fff;padding:10px 16px;border-radius:4px;margin-bottom:12px}',
+    '.epa-header h2{font-size:13px;font-weight:700}',
+    '.epa-notice{background:#fff8e0;border:2px solid #f0c040;border-radius:4px;padding:10px 14px;margin-bottom:12px;font-size:10px;color:#5a4010;line-height:1.6}',
+    '.epa-section{margin-bottom:10px}',
+    '.epa-section h3{font-size:10px;font-weight:700;color:#2e8b57;margin-bottom:4px;text-transform:uppercase}',
+    '.epa-text{font-size:9.5px;color:#3a4a5c;line-height:1.6}',
+    /* AUTH / SIGNATURE */
+    '.auth-box{border:2px solid #1a3a5c;border-radius:6px;padding:16px;margin-bottom:16px}',
+    '.auth-title{font-size:13px;font-weight:700;color:#1a3a5c;margin-bottom:10px}',
+    '.sig-row{display:flex;gap:24px;margin-top:16px}',
+    '.sig-block{flex:1}',
+    '.sig-line{border-bottom:2px solid #1a3a5c;height:36px;margin-bottom:4px}',
+    '.sig-label{font-size:9px;color:#7a8a9c;text-transform:uppercase;letter-spacing:0.5px}',
+    '.sig-name{font-size:11px;color:#2a3a4c;font-weight:600;margin-top:3px}',
+    /* ALSIDE COMPARISON */
+    '.comp-header{background:#1a3a5c;color:#fff;padding:12px 18px;border-radius:4px;margin-bottom:14px;text-align:center}',
+    '.comp-header h2{font-size:16px;font-weight:800}',
+    '.comp-header p{font-size:11px;color:#a0c4e8;margin-top:2px}',
+    '.comp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}',
+    '.comp-col{border:2px solid #dce6f0;border-radius:6px;overflow:hidden}',
+    '.comp-col.featured{border-color:#e8500a}',
+    '.comp-col-header{background:#1a3a5c;color:#fff;padding:10px;text-align:center}',
+    '.comp-col.featured .comp-col-header{background:#e8500a}',
+    '.comp-col-title{font-size:12px;font-weight:800}',
+    '.comp-col-price{font-size:11px;color:#a0c4e8;margin-top:2px}',
+    '.comp-col.featured .comp-col-price{color:#ffe0cc}',
+    '.comp-col-body{padding:10px}',
+    '.comp-feat{font-size:10px;color:#3a4a5c;padding:4px 0;border-bottom:1px solid #f0f4f8;display:flex;align-items:flex-start;gap:4px}',
+    '.comp-feat:before{content:"✓";color:#2e6ea6;font-weight:700;flex-shrink:0}',
+    '.comp-col.featured .comp-feat:before{color:#e8500a}',
+    '.comp-feat:last-child{border-bottom:none}',
+    /* UTILITIES */
+    '.text-center{text-align:center}',
+    '.text-right{text-align:right}',
+    '.mt-8{margin-top:8px}',
+    '.mt-12{margin-top:12px}',
+    '.mb-8{margin-bottom:8px}',
+    '.mb-12{margin-bottom:12px}',
+    '.bold{font-weight:700}',
+    '.accent{color:#e8500a}',
+    '.muted{color:#7a8a9c;font-size:10px}',
+    '.divider{border:none;border-top:1px solid #dce6f0;margin:12px 0}',
+    '.footer-bar{position:absolute;bottom:24px;left:0.6in;right:0.6in;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #dce6f0;padding-top:8px}',
+    '.footer-brand{font-size:9px;color:#7a8a9c;font-weight:600}',
+    '.footer-pg{font-size:9px;color:#7a8a9c}',
+    '@media print{.page{page-break-after:always}.page:last-child{page-break-after:auto}}'
+  ].join('\n');
+
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Renew Home Exteriors — ${docTitle} — ${h(custName)}</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#1e2a38;background:#bbb;line-height:1.5}
-.page{background:#fff;width:8.5in;min-height:11in;margin:.3in auto;padding:.75in;position:relative;overflow:hidden;page-break-after:always;box-shadow:0 2px 8px rgba(0,0,0,.3)}
-.page:last-child{page-break-after:avoid}
-.corner{position:absolute;bottom:0;right:0;width:0;height:0;border-style:solid;border-width:0 0 72px 72px;border-color:transparent transparent #111 transparent}
-.cover-pg{padding:.5in}
-.cover-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
-.logo-txt{font-size:24px;font-weight:900;color:#1a3a5c;line-height:1.1}
-.logo-red{color:#c0392b}
-.logo-tag{font-size:10px;color:#666;margin-top:3px}
-.goog-blk{text-align:center}
-.goog-word{font-size:28px;font-weight:900;letter-spacing:-1px}
-.house-slot{width:100%;height:310px;background:#e8edf5;display:flex;align-items:center;justify-content:center;border:2px dashed #aabcd4;color:#6b7a90;font-size:16px;border-radius:4px;margin:14px 0}
-.cover-bot{display:flex;justify-content:space-between;gap:20px;margin-top:8px}
-.doc-title{font-size:26px;font-weight:700;color:#1a3a5c;margin-bottom:4px}
-.doc-date{font-size:12px;color:#555}
-.cover-left{flex:1}
-.cover-right{background:#f4f7fb;border-radius:6px;padding:10px 14px;line-height:1.8;font-size:13px;min-width:200px}
-.sec-title{font-size:26px;font-weight:800;text-transform:uppercase;margin-bottom:20px}
-p{margin-bottom:10px}
-.goog-hdr{text-align:center;margin-bottom:20px}
-.goog-big{font-size:40px;font-weight:900;letter-spacing:-2px}
-.review-item{margin-bottom:16px;border-bottom:1px solid #eee;padding-bottom:14px}
-.rev-name{font-weight:700;color:#1a6bc4;font-size:13px;margin-bottom:3px}
-.insp-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}
-.photo-box{width:100%;height:190px;background:#f0f4f9;border:2px dashed #aabcd4;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#6b7a90;font-size:14px;margin-bottom:8px}
-.insp-note{font-size:11px;color:#555}
-.tpl-desc{font-size:11px;color:#444;line-height:1.6;margin-bottom:12px;padding:8px 12px;background:#f9f9f9;border-left:3px solid #1a3a5c}
-.dtable{width:100%;border-collapse:collapse;font-size:11px}
-.dth{background:#f0f4f9;padding:8px 12px;font-weight:700;border-bottom:2px solid #1a3a5c;text-align:left;width:85%}
-.qth{background:#f0f4f9;padding:8px 12px;font-weight:700;border-bottom:2px solid #1a3a5c;text-align:right;width:15%}
-.dc{padding:7px 12px;border-bottom:1px solid #eee;vertical-align:top}
-.qc{padding:7px 12px;border-bottom:1px solid #eee;text-align:right;font-weight:600;vertical-align:top}
-.dtable tr:nth-child(even) td{background:#fafbfd}
-.item-note{font-size:10px;color:#888;margin-top:2px}
-.price-wrap{max-width:380px;margin-left:auto;margin-top:10px}
-.tot-table{width:100%;border-collapse:collapse;margin-bottom:14px}
-.tot-lbl{padding:6px 4px;text-align:right;padding-right:20px;color:#555;font-size:13px}
-.tot-val{padding:6px 4px;text-align:right;font-size:13px;min-width:110px}
-.grand-row td{border-top:2px solid #1a3a5c;font-size:17px;font-weight:800;color:#1a3a5c;padding-top:8px}
-.fin-box{border:1px solid #d0d9e8;border-radius:6px;padding:12px;text-align:center;margin-bottom:14px;background:#fffdf6}
-.fin-name{font-weight:800;font-size:15px;color:#c47a00}
-.fin-plan{font-size:10px;color:#888;margin:3px 0}
-.fin-mo{font-size:24px;font-weight:900;color:#c47a00}
-.pay-lines{margin-top:10px;font-size:13px}
-.pay-row{margin:7px 0;display:flex;justify-content:space-between}
-.pay-amt{font-weight:700}
-.auth-top{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px}
-.auth-product{font-weight:800;font-size:16px;flex:1}
-.auth-price{font-weight:700;font-size:16px}
-.auth-info{font-size:12px;line-height:1.8}
-.notice-bar{background:#1a3a5c;color:#fff;padding:8px 14px;font-weight:700;font-size:11px;border-radius:3px;margin-bottom:12px}
-.notes-box{border:1px solid #aaa;min-height:90px;margin-bottom:16px;padding:8px}
-.auth-sigs{display:flex;gap:30px;margin-top:30px}
-.sig-block{flex:1}
-.sig-line{border-bottom:1px solid #333;height:36px;margin-bottom:5px}
-.sig-label{font-size:11px;font-weight:600;color:#444}
-.tc p{margin-bottom:8px;font-size:11px;line-height:1.65}
-.tc{padding-bottom:55px}
-.initials-bar{position:absolute;bottom:16px;left:.75in;right:.75in;border:1px solid #ccc;padding:6px 14px;font-size:11px;display:flex;align-items:center;background:#fafafa}
-.init-line{display:inline-block;border-bottom:1px solid #555;min-width:110px;margin-left:6px}
-.epa-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #1a6bc4}
-.epa-title{font-size:15px;font-weight:700;color:#c0392b}
-.epa-omb{font-size:10px;color:#c0392b}
-.epa-field{border-bottom:1px solid #555;margin:16px 0 4px;padding-top:18px;font-size:10px;color:#666}
-.epa-field2{display:flex;justify-content:space-between;border-bottom:1px solid #555;margin:16px 0 4px;padding-top:18px;font-size:10px;color:#666}
-.epa-omg-box{border:1px solid #333;padding:16px;font-size:11px;line-height:1.7;margin:24px 0}
-.db-sec{color:#1a6bc4;font-weight:700;font-size:12px;margin:10px 0 5px}
-.db-row{margin:6px 0;font-size:11px}
-.db-ln{display:inline-block;border-bottom:1px solid #555;min-width:220px;margin-left:4px}
-.db-ln-sm{display:inline-block;border-bottom:1px solid #555;min-width:100px;margin-left:4px}
-@media print{
-  body{background:none}
-  .page{margin:0;width:100%;box-shadow:none;page-break-after:always}
-  .no-print{display:none!important}
-  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-}
-@page{size:letter;margin:0}
-</style>
+<title>${custName || 'Quote'} — Renew Home Exteriors</title>
+<style>${css}</style>
 </head>
 <body>
-<button class="no-print" onclick="window.print()" style="position:fixed;top:16px;right:16px;z-index:9999;background:#1a3a5c;color:#fff;border:none;padding:10px 22px;border-radius:6px;font-size:14px;cursor:pointer;font-family:Arial">&#128424; Print / Save as PDF</button>
 ${allPages}
 </body>
 </html>`;
-
-  return fullHtml;
 }
 
-// Thin caller: build HTML and open print preview
-function generateFullPDF() {
+/* ─── Print (open in new window) ─────────────────────────── */
+async function printQuote() {
+  await autoSaveOnContract();
   const html = buildFullPDFHtml();
   if (!html) return;
   const win = window.open('', '_blank');
-  if (!win) { alert('Popup blocked — please allow popups for this page and try again.'); return; }
+  if (!win) { alert('Please allow popups to print.'); return; }
   win.document.write(html);
   win.document.close();
+  win.onload = function() { win.focus(); win.print(); };
+  // Mark as sent — contract has been generated for in-person signing
+  _patchQuoteStatus('sent');
 }
 
-// ============================================================
-// SEND FOR SIGNATURE  (UETA-compliant e-signature via email)
-// ============================================================
+/* ─── Change Orders viewer ───────────────────────────────── */
+function viewCOs(quoteId, customerName, evt) {
+  if (evt) evt.stopPropagation();
+  window.open(
+    'change-orders.html?quote=' + encodeURIComponent(quoteId) +
+    '&name=' + encodeURIComponent(customerName),
+    '_blank'
+  );
+}
+
+/* ─── Missing constant ───────────────────────────────────── */
 const SIGNING_FN_URL = SUPABASE_URL + '/functions/v1/send-for-signature';
 
-function openSendModal() {
-  if (!quoteItems.length) { alert('Please add items to the quote first.'); return; }
-  // Pre-fill modal fields
-  document.getElementById('sendModal_name').value  =
-    document.getElementById('custName').value.trim() || '';
-  document.getElementById('sendModal_email').value =
-    (document.getElementById('custEmail') || {}).value || '';
-  document.getElementById('sendModal_type').textContent =
-    (projectType === 'roofing' ? 'Roofing Estimate' : 'Siding Quote') +
-    (activeTemplate ? ' — ' + activeTemplate.name : '');
-  // Reset status
-  const st = document.getElementById('sendModal_status');
-  st.style.display = 'none'; st.textContent = '';
-  document.getElementById('sendModal_btn').disabled = false;
-  document.getElementById('sendModal').style.display = 'flex';
-}
-
-function closeSendModal() {
-  document.getElementById('sendModal').style.display = 'none';
-}
-
-async function sendForSignature() {
-  const email = document.getElementById('sendModal_email').value.trim();
-  const name  = document.getElementById('sendModal_name').value.trim();
-  const st    = document.getElementById('sendModal_status');
-  const btn   = document.getElementById('sendModal_btn');
-
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    showSendStatus('error', '⚠️ Please enter a valid customer email address.'); return;
-  }
-  if (!name) {
-    showSendStatus('error', '⚠️ Please enter the customer name.'); return;
-  }
-
-  btn.disabled = true;
-  showSendStatus('info', '⏳ Building document and sending emails…');
-
-  try {
-    // 1. Auto-save the quote first (ensures currentQuoteId is set)
-    const { data: { session } } = await _supa.auth.getSession();
-    if (!session) { showSendStatus('error', '⚠️ Please sign in to send for signature.'); btn.disabled = false; return; }
-    if (!currentQuoteId) {
-      await saveQuote();
-      await new Promise(r => setTimeout(r, 800)); // brief pause for save to propagate
-    }
-
-    // 2. Build the full document HTML
-    const docHtml = buildFullPDFHtml();
-    if (!docHtml) { btn.disabled = false; return; }
-
-    // 3. Build document summary (for email preview)
-    const grand   = getGrandTotal();
-    const qnum    = document.getElementById('quoteNum').value || '';
-    const qdate   = document.getElementById('quoteDate').value || '';
-    const summary = {
-      type:        projectType === 'roofing' ? 'Roofing Estimate' : 'Siding Quote',
-      template:    activeTemplate ? activeTemplate.name : '',
-      total:       grand,
-      project_num: qnum,
-      date:        qdate,
-    };
-
-    // 4. POST to edge function
-    const res = await fetch(SIGNING_FN_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization':  'Bearer ' + session.access_token,
-        'Content-Type':   'application/json',
-      },
-      body: JSON.stringify({
-        quote_id:         currentQuoteId,
-        tenant_id:        '5249f9c0-9fca-46c8-896c-4e35be437024',
-        customer_name:    name,
-        customer_email:   email,
-        document_html:    docHtml,
-        document_summary: summary,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (res.ok && data.success) {
-      const emailNote = data.emails_sent
-        ? `Emails sent to <strong>${email}</strong> and RHEOhio@gmail.com.`
-        : `Signing link created (email not configured — see SIGNING_SETUP.md).<br>
-           <a href="${data.signing_url}" target="_blank" style="color:#1a6bc4">Copy signing link</a>`;
-      showSendStatus('success',
-        `✅ Sent for signature!<br>${emailNote}<br>
-         <small style="color:#666">The customer can sign from any device. You will be notified when signed.</small>`);
-      // Close modal after 4 seconds on success
-      setTimeout(() => closeSendModal(), 5000);
-    } else {
-      throw new Error(data.error || 'Unknown error from signing service');
-    }
-  } catch (err) {
-    console.error('[sendForSignature]', err);
-    showSendStatus('error', '❌ Failed to send: ' + err.message +
-      '<br><small>Check SIGNING_SETUP.md for configuration instructions.</small>');
-    btn.disabled = false;
-  }
-}
-
-function showSendStatus(type, html) {
-  const st = document.getElementById('sendModal_status');
-  const colors = {
-    success: { bg:'#e8f5e9', border:'#4caf50', color:'#1b5e20' },
-    error:   { bg:'#fdecea', border:'#f44336', color:'#c0392b' },
-    info:    { bg:'#e3f2fd', border:'#2196f3', color:'#0d47a1' },
-  };
-  const c = colors[type] || colors.info;
-  st.style.cssText = `display:block;background:${c.bg};border:1px solid ${c.border};color:${c.color};border-radius:6px;padding:10px 14px;font-size:13px;line-height:1.6`;
-  st.innerHTML = html;
-}
-
-// ============================================================
-// MY QUOTES — load / search / render
-// ============================================================
-var _allLoadedQuotes = [];
-
-async function loadQuote() {
-  const modal = document.getElementById('loadQuoteModal');
-  modal.style.display = 'flex';
-  document.getElementById('lqSearch').value = '';
-  document.getElementById('lqBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#999">Loading…</td></tr>';
-
-  const { data: { session } } = await _supa.auth.getSession();
-  if (!session) {
-    document.getElementById('lqBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#c0392b">Please sign in first.</td></tr>';
-    return;
-  }
-  const r = await fetch(
-    SUPABASE_URL + '/rest/v1/quotes?select=id,quote_number,customer_name,customer_address,template_id,totals,status,signing_status,created_at&order=created_at.desc&limit=200',
-    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token } }
-  );
-  if (!r.ok) {
-    document.getElementById('lqBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#c0392b">Failed to load quotes (' + r.status + ')</td></tr>';
-    return;
-  }
-  _allLoadedQuotes = await r.json();
-  renderLoadList(_allLoadedQuotes);
-}
-
-function closeLoadModal() {
-  document.getElementById('loadQuoteModal').style.display = 'none';
-}
-
-function filterLoadQuotes() {
-  var q = document.getElementById('lqSearch').value.toLowerCase().trim();
-  if (!q) { renderLoadList(_allLoadedQuotes); return; }
-  renderLoadList(_allLoadedQuotes.filter(function(qt) {
-    return (qt.customer_name||'').toLowerCase().includes(q) ||
-           (qt.quote_number||'').toLowerCase().includes(q) ||
-           (qt.customer_address||'').toLowerCase().includes(q);
-  }));
-}
-
-function renderLoadList(quotes) {
-  var tbody = document.getElementById('lqBody');
-  if (!quotes.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#999">No quotes found.</td></tr>';
-    return;
-  }
-  var statusColors = {
-    draft:  { bg:'#f4f7fb',  color:'#6b7a90' },
-    sent:   { bg:'#e3f2fd',  color:'#1565c0' },
-    signed: { bg:'#e8f5e9',  color:'#2e7d32' },
-    void:   { bg:'#fce4ec',  color:'#c62828' },
-  };
-  tbody.innerHTML = quotes.map(function(qt) {
-    var ss    = qt.signing_status || qt.status || 'draft';
-    var sc    = statusColors[ss] || statusColors.draft;
-    var total = qt.totals && qt.totals.grand ? '$' + parseFloat(qt.totals.grand).toLocaleString('en-US',{minimumFractionDigits:2}) : '—';
-    var date  = qt.created_at ? new Date(qt.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-    return '<tr style="border-bottom:1px solid #eef2f8;cursor:pointer" onmouseover="this.style.background=\'#f8fafd\'" onmouseout="this.style.background=\'\'">'
-      + '<td style="padding:9px 12px;font-family:monospace;font-weight:700;color:#1a3a5c;font-size:11px" onclick="loadQuoteById(\''+qt.id+'\')">'+( qt.quote_number || qt.id.slice(0,8).toUpperCase())+'</td>'
-      + '<td style="padding:9px 12px;font-weight:600" onclick="loadQuoteById(\''+qt.id+'\')">'+( qt.customer_name || '—')+'</td>'
-      + '<td style="padding:9px 12px;color:#6b7a90;font-size:11px" onclick="loadQuoteById(\''+qt.id+'\')">'+( qt.template_id || '—')+'</td>'
-      + '<td style="padding:9px 12px;color:#6b7a90;font-size:11px" onclick="loadQuoteById(\''+qt.id+'\')">'+date+'</td>'
-      + '<td style="padding:9px 12px;text-align:right;font-weight:700" onclick="loadQuoteById(\''+qt.id+'\')">'+total+'</td>'
-      + '<td style="padding:9px 12px">'
-        + '<div style="display:flex;align-items:center;gap:6px">'
-        + '<span style="background:'+sc.bg+';color:'+sc.color+';font-size:9px;font-weight:800;padding:2px 7px;border-radius:10px;text-transform:uppercase">'+ss+'</span>'
-        + '<button onclick="viewCOs(\''+qt.id+'\',\''+( qt.customer_name||'').replace(/'/g,'')+'\',event)" title="View / Create Change Orders" style="background:#e8a020;color:#fff;border:none;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">± CO</button>'
-        + '</div></td>'
-      + '</tr>';
-  }).join('');
-}
-
-// ── CO List Modal ─────────────────────────────────────────────
-var _coListQuoteId = null;
-
-async function viewCOs(quoteId, customerName, e) {
-  if (e) e.stopPropagation();
-  _coListQuoteId = quoteId;
-  document.getElementById('coListCustomer').textContent = customerName || '';
-  document.getElementById('coListBody').innerHTML = '<div style="text-align:center;padding:20px;color:#999;font-size:13px">Loading…</div>';
-  document.getElementById('coListModal').style.display = 'flex';
-
-  // Wire up "New CO" button
-  document.getElementById('coListNewBtn').onclick = function() {
-    closeCoListModal();
-    openChangeOrder(quoteId);
-  };
-
-  const { data: { session } } = await _supa.auth.getSession();
-  if (!session) {
-    document.getElementById('coListBody').innerHTML = '<div style="color:#c0392b;font-size:13px;padding:12px">Please sign in first.</div>';
-    return;
-  }
-
-  const r = await fetch(
-    SUPABASE_URL + '/rest/v1/change_orders?quote_id=eq.' + quoteId +
-    '&select=id,co_number,findings,status,total,created_at&order=created_at.asc',
-    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token } }
-  );
-
-  if (!r.ok) {
-    document.getElementById('coListBody').innerHTML = '<div style="color:#c0392b;font-size:13px;padding:12px">Failed to load change orders.</div>';
-    return;
-  }
-
-  const cos = await r.json();
-  if (!cos.length) {
-    document.getElementById('coListBody').innerHTML =
-      '<div style="text-align:center;padding:24px;color:#999;font-size:13px">No change orders yet for this quote.</div>';
-    return;
-  }
-
-  var statusColors = { draft:'#6b7a90', sent:'#1565c0', signed:'#2e7d32', void:'#c62828' };
-  document.getElementById('coListBody').innerHTML =
-    '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
-    '<thead><tr style="border-bottom:2px solid #eef2f8">' +
-      '<th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:700;color:#6b7a90;text-transform:uppercase">CO #</th>' +
-      '<th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:700;color:#6b7a90;text-transform:uppercase">Description</th>' +
-      '<th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:700;color:#6b7a90;text-transform:uppercase">Status</th>' +
-      '<th style="text-align:right;padding:7px 10px;font-size:10px;font-weight:700;color:#6b7a90;text-transform:uppercase">Total</th>' +
-      '<th style="padding:7px 10px"></th>' +
-    '</tr></thead><tbody>' +
-    cos.map(function(co) {
-      var st = co.status || 'draft';
-      var stColor = statusColors[st] || '#6b7a90';
-      var total = co.total ? '$' + parseFloat(co.total).toLocaleString('en-US',{minimumFractionDigits:2}) : '—';
-      var desc = (co.findings || '').slice(0, 50) + ((co.findings||'').length > 50 ? '…' : '');
-      return '<tr style="border-bottom:1px solid #eef2f8">' +
-        '<td style="padding:9px 10px;font-family:monospace;font-weight:700;color:#1a3a5c">' + (co.co_number||'—') + '</td>' +
-        '<td style="padding:9px 10px;color:#1e2a38">' + (desc||'<em style="color:#aaa">No description</em>') + '</td>' +
-        '<td style="padding:9px 10px"><span style="background:' + stColor + '22;color:' + stColor + ';font-size:9px;font-weight:800;padding:2px 7px;border-radius:10px;text-transform:uppercase">' + st + '</span></td>' +
-        '<td style="padding:9px 10px;text-align:right;font-weight:700">' + total + '</td>' +
-        '<td style="padding:9px 10px;text-align:right">' +
-          '<a href="change-orders.html?co_id=' + co.id + '" target="_blank" ' +
-          'style="background:#1a3a5c;color:#fff;padding:4px 11px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap">Open ↗</a>' +
-        '</td></tr>';
-    }).join('') +
-    '</tbody></table>';
-}
-
-function closeCoListModal() {
-  document.getElementById('coListModal').style.display = 'none';
-}
-
-
-async function loadQuoteById(id) {
-  closeLoadModal();
-  const { data: { session } } = await _supa.auth.getSession();
-  if (!session) { alert('Please sign in first.'); return; }
-  const r = await fetch(
-    SUPABASE_URL + '/rest/v1/quotes?id=eq.' + id + '&select=*&limit=1',
-    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token } }
-  );
-  if (!r.ok) { alert('Failed to load quote: ' + r.status); return; }
-  const rows = await r.json();
-  if (!rows.length) { alert('Quote not found.'); return; }
-  const q = rows[0];
-
-  // ── Core identity ─────────────────────────────────────────
-  currentQuoteId = q.id;
-
-  // ── Customer fields ───────────────────────────────────────
-  document.getElementById('custName').value  = q.customer_name  || '';
-  document.getElementById('custPhone').value = q.customer_phone || '';
-  document.getElementById('custEmail').value = q.customer_email || '';
-  // Address: stored combined; put into street field
-  const addrParts = (q.customer_address || '').split(',').map(s => s.trim());
-  document.getElementById('custAddr').value = addrParts[0] || '';
-  if (addrParts.length >= 3) {
-    document.getElementById('custCity').value = addrParts[1] || '';
-    document.getElementById('custZip').value  = addrParts[2] || '';
-  } else if (addrParts.length === 2) {
-    document.getElementById('custCity').value = addrParts[1] || '';
-    document.getElementById('custZip').value  = '';
-  }
-
-  // ── Quote number / date ───────────────────────────────────
-  if (q.quote_number) document.getElementById('quoteNum').value = q.quote_number;
-  if (q.quote_date)   document.getElementById('quoteDate').value = q.quote_date;
-
-  // ── Template ──────────────────────────────────────────────
-  if (q.template_id) selectTemplate(q.template_id);
-
-  // ── Color selections ──────────────────────────────────────
-  colorSelections = q.color_selections || {};
-  buildColorFields();
-
-  // ── Items ─────────────────────────────────────────────────
-  // Stored flat: { product_id, name, price, unit, cat, tax, qty, note, line_total }
-  // quoteItems expects: { product: { id, name, price, unit, cat, tax, ... }, qty, note }
-  var storedItems = q.items || [];
-  quoteItems = storedItems.map(function(it) {
-    // Try to find full product in allProducts first
-    var found = (PRODUCTS || []).find(function(p) { return p.id === (it.product_id || it.id); });
-    var prod = found || {
-      id:    it.product_id || it.id || '',
-      name:  it.name  || '',
-      price: parseFloat(it.price) || 0,
-      unit:  it.unit  || '',
-      cat:   it.cat   || '',
-      tax:   it.tax   || '',
-      mat:   it.mat   || 0,
-      labor: it.labor || 0,
-    };
-    return { product: prod, qty: parseFloat(it.qty) || 1, note: it.note || '' };
-  });
-
-  // ── Dimensions ────────────────────────────────────────────
-  if (q.roof_sqft  !== undefined && q.roof_sqft  !== null) {
-    var rf = document.getElementById('roofSqft');
-    if (rf) { rf.value = q.roof_sqft; calcRoofSQ(); }
-  }
-  if (q.siding_sqft !== undefined && q.siding_sqft !== null) {
-    var sf = document.getElementById('sidingSqft');
-    if (sf) { sf.value = q.siding_sqft; calcSidingSQ(); }
-  }
-
-  // ── Discount / payment ────────────────────────────────────
-  var dd = document.getElementById('discountDollar');
-  if (dd && q.discount_dollar != null) {
-    dd.value    = q.discount_dollar;
-    discountAmt = parseFloat(q.discount_dollar) || 0; // keep in sync with renderQuote
-  }
-  var dp = document.getElementById('discountPercent');
-  if (dp && q.discount_pct != null)    dp.value = q.discount_pct;
-  var md = document.getElementById('moneyDown');
-  if (md && q.payment_down != null)    md.value = q.payment_down;
-
-  // ── Notes ─────────────────────────────────────────────────
-  var pn = document.getElementById('projectNotes');
-  if (pn) pn.value = q.project_notes || q.notes || '';
-
-  // ── Financing ─────────────────────────────────────────────
-  var pd = q.payment_data || {};
-  if (pd.provider_id) selectedProviderId = pd.provider_id;
-  selectedPlanIds = new Set(Array.isArray(pd.plan_ids) ? pd.plan_ids : []);
-  var finChk = document.getElementById('useFinancing');
-  if (finChk) {
-    finChk.checked = !!pd.use_financing;
-    document.getElementById('financingPicker').style.display = finChk.checked ? 'block' : 'none';
-    if (finChk.checked) {
-      renderProviderPills();
-      renderPlanList();
-      updateFinBadge();
-    }
-  }
-
-  // ── Satellite image ───────────────────────────────────────
-  if (q.satellite_image_url) {
-    satelliteImgUrl = q.satellite_image_url;
-    var img = document.getElementById('sat-img');
-    if (img) { img.src = q.satellite_image_url; img.style.display = 'block'; }
-    var prev = document.getElementById('sat-preview');
-    if (prev) prev.style.display = 'block';
-    var loading = document.getElementById('sat-loading');
-    if (loading) loading.style.display = 'none';
-  }
-
-  renderQuote();
-  renderProductList();
-  // Refresh scope preview now that colors + items are all restored
-  renderScopePreview();
-  // Load photos for this quote
-  loadPhotos();
-  // Scroll to top
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// ============================================================
-// CLEAR / NEW QUOTE
-// ============================================================
+/* ─── Quote state helpers ────────────────────────────────── */
 function clearQuote() {
-  if (quoteItems.length && !confirm('Start a new quote? Unsaved changes will be lost.')) return;
-
-  // Reset customer fields
-  ['custName','custAddr','custCity','custZip','custPhone','custEmail','quoteNum','projectNotes'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  // Reset date to today
-  document.getElementById('quoteDate').value = new Date().toLocaleDateString('en-US');
-  // Reset items, state
-  quoteItems      = [];
-  currentQuoteId  = null;
-  discountAmt     = 0;
-  satelliteImgUrl = '';
-  quotePhotos     = [];
-  selectedPlanIds = new Set();
-  selectedProviderId = null;
+  if (!confirm('Clear the current quote and start over?')) return;
+  currentQuoteId = null;
+  quotePhotos = [];
+  alsideTiers = {};
+  isAlsideComparison = false;
   colorSelections = {};
-
-  // Reset photo grid
-  renderPhotoGrid();
-
-  // Reset satellite preview
-  const satPrev = document.getElementById('sat-preview');
-  if (satPrev) satPrev.style.display = 'none';
-  const satImg = document.getElementById('sat-img');
-  if (satImg) satImg.src = '';
-
-  // Reset discount fields
-  const dd = document.getElementById('discountDollar');
-  if (dd) dd.value = '';
-  const dp = document.getElementById('discountPercent');
-  if (dp) dp.value = '';
-  const md = document.getElementById('moneyDown');
-  if (md) md.value = '';
-
-  // Reset financing
-  const finChk = document.getElementById('useFinancing');
-  if (finChk) { finChk.checked = false; }
-  const finPicker = document.getElementById('financingPicker');
-  if (finPicker) finPicker.style.display = 'none';
-  const finBadge = document.getElementById('financingBadge');
-  if (finBadge) finBadge.style.display = 'none';
-
-  // Reset template / colors
-  activeTemplate  = null;
-  document.querySelectorAll('.template-btn').forEach(b => b.classList.remove('active'));
-  const ccont = document.getElementById('colorFieldsContainer');
-  if (ccont) { ccont.innerHTML = ''; ccont.style.display = 'none'; }
-
-  // Generate new quote number
-  document.getElementById('quoteNum').value = 'RHE-' + Date.now().toString().slice(-6);
-
-  renderQuote();
-  renderProductList();
-  updatePaymentDisplay();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  discountAmt = 0;
+  selectedPlanIds = [];
+  activeTemplate = null;
+  document.getElementById('quoteNumInput').value = '';
+  document.getElementById('customerName').value = '';
+  document.getElementById('customerAddress').value = '';
+  document.getElementById('customerPhone').value = '';
+  document.getElementById('customerEmail').value = '';
+  const nb = document.getElementById('notesBox');
+  if (nb) nb.value = '';
+  renderTemplateGrid();
+  const prod = document.getElementById('productSection');
+  if (prod) prod.innerHTML = '';
+  const pr = document.getElementById('pricingSection');
+  if (pr) pr.innerHTML = '';
+  showSection('templateSection');
 }
 
-// ============================================================
-// SAVE QUOTE
-// ============================================================
-async function saveQuote() {
-  const { data: { session } } = await _supa.auth.getSession();
-  if (!session) { alert('Please sign in to save.'); return; }
-
-  const name   = document.getElementById('custName').value.trim();
-  const addr   = document.getElementById('custAddr').value.trim();
-  const city   = document.getElementById('custCity').value.trim();
-  const zip    = document.getElementById('custZip').value.trim();
-  const phone  = document.getElementById('custPhone').value.trim();
-  const email  = document.getElementById('custEmail').value.trim();
-  const qnum   = document.getElementById('quoteNum').value.trim();
-  const qdate  = document.getElementById('quoteDate').value.trim();
-  const notes  = document.getElementById('projectNotes') ? document.getElementById('projectNotes').value.trim() : '';
-  const fullAddr = [addr, city, zip].filter(Boolean).join(', ');
-
-  // Flatten quoteItems for storage
-  const items = quoteItems.map(function(it) {
-    return {
-      product_id: it.product.id,
-      name:       it.product.name,
-      price:      it.product.price,
-      unit:       it.product.unit || '',
-      cat:        it.product.cat  || '',
-      tax:        it.product.tax  || '',
-      qty:        it.qty,
-      note:       it.note || '',
-      line_total: parseFloat((it.product.price * it.qty).toFixed(2)),
-    };
-  });
-
-  // Compute totals
-  var subtotal = 0, taxTotal = 0;
-  const TAX_RATE = 0.065;
-  quoteItems.forEach(function(it) {
-    var lt = it.product.price * it.qty;
-    subtotal += lt;
-    if (it.product.tax === 'y') taxTotal += lt * TAX_RATE;
-  });
-  var discDollar = parseFloat((document.getElementById('discountDollar') || {}).value) || 0;
-  var grand = Math.max(0, subtotal + taxTotal - discDollar);
-  var down  = parseFloat((document.getElementById('moneyDown') || {}).value) || 0;
-
-  var payload = {
-    tenant_id:        '5249f9c0-9fca-46c8-896c-4e35be437024',
-    created_by:       session.user.id,
-    customer_name:    name,
-    customer_address: fullAddr,
-    customer_phone:   phone,
-    customer_email:   email,
-    quote_number:     qnum,
-    quote_date:       qdate,
-    template_id:      activeTemplate ? activeTemplate.id : null,
-    color_selections: colorSelections,
-    items:            items,
-    roof_sqft:        parseFloat((document.getElementById('roofSqft') || {}).value) || null,
-    siding_sqft:      parseFloat((document.getElementById('sidingSqft') || {}).value) || null,
-    discount_dollar:  discDollar,
-    discount_pct:     parseFloat((document.getElementById('discountPct') || {}).value) || 0,
-    payment_down:     down,
-    project_notes:    notes,
-    satellite_image_url: satelliteImgUrl || null,
-    totals:           { subtotal: parseFloat(subtotal.toFixed(2)), tax: parseFloat(taxTotal.toFixed(2)), grand: parseFloat(grand.toFixed(2)) },
-    payment_data:     {
-      provider_id: selectedProviderId || null,
-      plan_ids:    [...selectedPlanIds],
-      use_financing: document.getElementById('useFinancing').checked,
-    },
-    status:           'draft',
-    // Auto-assign the creator as rep on new quotes; don't overwrite on updates
-    ...(currentQuoteId ? {} : { assigned_rep_id: session.user.id }),
-  };
-
-  var url  = currentQuoteId ? '/rest/v1/quotes?id=eq.' + currentQuoteId : '/rest/v1/quotes';
-  var meth = currentQuoteId ? 'PATCH' : 'POST';
-
-  var r = await fetch(SUPABASE_URL + url, {
-    method: meth,
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + session.access_token,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation',
-    },
-    body: JSON.stringify(payload),
-  });
-  var data = await r.json();
-  var rec = Array.isArray(data) ? data[0] : data;
-  if (!r.ok) {
-    console.error('Save failed — full response:', JSON.stringify(rec, null, 2));
-    alert('Save failed: ' + (rec && rec.message ? rec.message : JSON.stringify(rec)));
+/* ─── Send for signature modal ───────────────────────────── */
+function openSendModal() {
+  const modal = document.getElementById('sendModal');
+  if (modal) modal.style.display = 'flex';
+}
+function closeSendModal() {
+  const modal = document.getElementById('sendModal');
+  if (modal) modal.style.display = 'none';
+}
+async function sendForSignature() {
+  const emailEl = document.getElementById('sigEmail');
+  const phoneEl = document.getElementById('sigPhone');
+  const email = emailEl ? emailEl.value.trim() : '';
+  const phone = phoneEl ? phoneEl.value.trim() : '';
+  if (!email && !phone) {
+    alert('Please enter an email address or phone number.');
     return;
   }
-  if (!currentQuoteId && rec && rec.id) currentQuoteId = rec.id;
-
-  // Brief visual feedback on save button
-  var btn = document.querySelector('button[onclick="saveQuote()"]');
-  if (btn) { var orig = btn.textContent; btn.textContent = '✓ Saved'; setTimeout(function(){ btn.textContent = orig; }, 1500); }
+  closeSendModal();
+  try {
+    await confirmGenerateContract(email, phone);
+  } catch(e) {
+    alert('Failed to send for signature: ' + e.message);
+  }
 }
 
-function autoSaveOnContract() {
-  // Fire-and-forget background save — don't block contract generation
-  saveQuote().catch(function(e) { console.warn('Auto-save failed:', e); });
-}
-
-async function openChangeOrder(quoteId) {
-  _coQuoteId = quoteId;
-  _coId      = null;
-  _coItems   = [];
-
-  const { data: { session } } = await _supa.auth.getSession();
-  if (!session) { alert('Please sign in first.'); return; }
-
-  const r = await fetch(
-    SUPABASE_URL + '/rest/v1/quotes?id=eq.' + quoteId + '&select=*&limit=1',
-    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token } }
-  );
-  if (!r.ok) { alert('Failed to load quote: ' + r.status); return; }
-  const rows = await r.json();
-  if (!rows.length) { alert('Quote not found.'); return; }
-  const q = rows[0];
-
-  _coOrigTotal = q.totals ? (q.totals.grand || 0) : 0;
-  _coItems = (q.items || []).map(it => ({ ...it, _st: 'original', _oQty: it.qty, _oPrice: it.price }));
-
-  const cr = await fetch(
-    SUPABASE_URL + '/rest/v1/change_orders?quote_id=eq.' + quoteId + '&select=co_number',
-    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token } }
-  );
-  const coRows = cr.ok ? await cr.json() : [];
-  document.getElementById('co-num-input').value = 'CO-' + String(coRows.length + 1).padStart(3, '0');
-  document.getElementById('co-desc-input').value = '';
-  document.getElementById('co-reason-input').value = '';
-
-  const ss = q.signing_status || 'unsigned';
-  document.getElementById('co-quote-info').innerHTML = [
-    ['Quote #',   q.quote_number || q.id.slice(0,8).toUpperCase()],
-    ['Customer',  q.customer_name || '—'],
-    ['Address',   q.customer_address || '—'],
-    ['Original Total', '$' + parseFloat(_coOrigTotal).toLocaleString('en-US',{minimumFractionDigits:2})],
-    ['Status',    ss.charAt(0).toUpperCase()+ss.slice(1)],
-  ].map(([l,v]) => '<div><div style="font-size:10px;font-weight:700;color:#6b7a90;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">'+l+'</div><div style="font-size:13px;font-weight:600">'+v+'</div></div>').join('');
-
-  document.getElementById('co-send-name').value  = q.customer_name  || '';
-  document.getElementById('co-send-email').value = q.customer_email || '';
-  document.getElementById('co-panel-subtitle').textContent = q.customer_name || '';
-  document.getElementById('co-panel-badge').style.display = 'none';
-  document.getElementById('co-alert').style.display = 'none';
-  document.getElementById('co-btn-send').disabled = false;
-  document.getElementById('co-btn-send').textContent = '✍️ Send for Signature';
-
-  coRenderItems();
-  document.getElementById('coPanel').style.display = 'block';
-  document.getElementById('coPanel').scrollTop = 0;
-}
-
+/* ─── Change Order panel helpers ─────────────────────────── */
 function closeCoPanel() {
-  document.getElementById('coPanel').style.display = 'none';
+  const panel = document.getElementById('changeOrderPanel');
+  if (panel) panel.style.display = 'none';
 }
-
-function coRenderItems() {
-  const tbody = document.getElementById('co-items-tbody');
-  if (!_coItems.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:14px;color:#999">No items</td></tr>';
-    coUpdateTotals(); return;
-  }
-  tbody.innerHTML = _coItems.map(function(it, i) {
-    var tagMap = {
-      added:    '<span style="background:#d4edda;color:#155724;font-size:9px;font-weight:800;padding:2px 6px;border-radius:10px;margin-left:5px">+ADDED</span>',
-      removed:  '<span style="background:#f8d7da;color:#721c24;font-size:9px;font-weight:800;padding:2px 6px;border-radius:10px;margin-left:5px">−REMOVED</span>',
-      modified: '<span style="background:#fff3cd;color:#856404;font-size:9px;font-weight:800;padding:2px 6px;border-radius:10px;margin-left:5px">✎MOD</span>'
-    };
-    var dim = it._st === 'removed' ? 'opacity:.5' : '';
-    var dis = it._st === 'removed' ? 'disabled' : '';
-    var lt  = (it.price * it.qty).toFixed(2);
-    return '<tr style="border-bottom:1px solid #eef2f8;'+dim+'">'
-      +'<td style="padding:7px 10px;font-weight:600">'+it.name+(tagMap[it._st]||'')+'</td>'
-      +'<td style="padding:7px 10px;color:#6b7a90;font-size:11px">'+(it.unit||'—')+'</td>'
-      +'<td style="padding:7px 10px"><input type="number" value="'+it.qty+'" min="0" step="0.01" '+dis
-        +' style="width:65px;border:1.5px solid #d5dae5;border-radius:5px;padding:4px 6px;font-size:12px;text-align:center"'
-        +' oninput="coQtyChange(this,'+i+')"></td>'
-      +'<td style="padding:7px 10px"><input type="number" value="'+parseFloat(it.price).toFixed(2)+'" min="0" step="0.01" '+dis
-        +' style="width:82px;border:1.5px solid #d5dae5;border-radius:5px;padding:4px 6px;font-size:12px;text-align:right"'
-        +' oninput="coPriceChange(this,'+i+')"></td>'
-      +'<td style="padding:7px 10px;text-align:right;font-weight:700;color:'+(it._st==='removed'?'#c0392b':'#1a3a5c')+'" id="co-lt-'+i+'">'
-        +(it._st==='removed'?'−':'')+'$'+Math.abs(parseFloat(lt)).toLocaleString('en-US',{minimumFractionDigits:2})+'</td>'
-      +'<td style="padding:7px 10px;text-align:center">'
-        +(it._st !== 'removed'
-          ? '<button onclick="coRemoveItem('+i+')" style="background:#f8d7da;color:#721c24;border:none;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer">✕</button>'
-          : '<button onclick="coRestoreItem('+i+')" style="background:#f4f7fb;border:1px solid #c8d0dc;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer">↩</button>')
-      +'</td></tr>';
-  }).join('');
-  coUpdateTotals();
-}
-
-function coQtyChange(el, i) {
-  _coItems[i].qty = parseFloat(el.value) || 0;
-  if (_coItems[i]._st === 'original' && _coItems[i].qty !== _coItems[i]._oQty) _coItems[i]._st = 'modified';
-  var lt = document.getElementById('co-lt-' + i);
-  if (lt) lt.textContent = '$' + (_coItems[i].price * _coItems[i].qty).toLocaleString('en-US',{minimumFractionDigits:2});
-  coUpdateTotals();
-}
-function coPriceChange(el, i) {
-  _coItems[i].price = parseFloat(el.value) || 0;
-  if (_coItems[i]._st === 'original' && _coItems[i].price !== _coItems[i]._oPrice) _coItems[i]._st = 'modified';
-  var lt = document.getElementById('co-lt-' + i);
-  if (lt) lt.textContent = '$' + (_coItems[i].price * _coItems[i].qty).toLocaleString('en-US',{minimumFractionDigits:2});
-  coUpdateTotals();
-}
-function coRemoveItem(i) {
-  if (_coItems[i]._st === 'added') _coItems.splice(i, 1);
-  else _coItems[i]._st = 'removed';
-  coRenderItems();
-}
-function coRestoreItem(i) {
-  _coItems[i]._st = (_coItems[i].qty !== _coItems[i]._oQty || _coItems[i].price !== _coItems[i]._oPrice) ? 'modified' : 'original';
-  coRenderItems();
-}
-function coUpdateTotals() {
-  var newT = 0;
-  _coItems.forEach(function(it) {
-    if (it._st !== 'removed') newT += parseFloat((it.price * it.qty).toFixed(2));
-  });
-  newT = parseFloat(newT.toFixed(2));
-  var delta = parseFloat((newT - _coOrigTotal).toFixed(2));
-  document.getElementById('co-tot-orig').textContent = '$' + _coOrigTotal.toLocaleString('en-US',{minimumFractionDigits:2});
-  document.getElementById('co-tot-new').textContent  = '$' + newT.toLocaleString('en-US',{minimumFractionDigits:2});
-  var deltaEl = document.getElementById('co-tot-delta');
-  deltaEl.textContent = (delta >= 0 ? '+$' : '-$') + Math.abs(delta).toLocaleString('en-US',{minimumFractionDigits:2});
-  deltaEl.style.color = delta < 0 ? '#c0392b' : '#2e7d32';
-}
-
-function coFilterProducts() {
-  var q   = document.getElementById('co-prod-search').value.toLowerCase().trim();
-  var res = document.getElementById('co-prod-results');
-  if (!q) { res.style.display = 'none'; return; }
-  _coFiltProds = (PRODUCTS || []).filter(function(p) {
-    return (p.name||'').toLowerCase().includes(q) ||
-           (p.cat||'').toLowerCase().includes(q) ||
-           (p.description||'').toLowerCase().includes(q) ||
-           (p.unit||'').toLowerCase().includes(q);
-  }).slice(0, 20);
-  if (!_coFiltProds.length) {
-    res.innerHTML = '<div style="padding:10px 12px;color:#999;font-size:13px">No products found</div>';
-    res.style.display = 'block'; return;
-  }
-  res.innerHTML = _coFiltProds.map(function(p, i) {
-    return '<div style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #eef2f8;font-size:13px"'
-      +' onmouseover="this.style.background=\'#f4f7fb\'" onmouseout="this.style.background=\'\'"'
-      +' onclick="coSelectProd('+i+')">'
-      +'<div style="display:flex;justify-content:space-between"><strong>'+p.name+'</strong>'
-      +'<span style="color:#1a3a5c;font-weight:700">$'+parseFloat(p.price).toFixed(2)+'</span></div>'
-      +(p.cat||p.unit ? '<div style="color:#6b7a90;font-size:11px;margin-top:1px">'+[p.cat,p.unit].filter(Boolean).join(' · ')+'</div>' : '')
-      +'</div>';
-  }).join('');
-  res.style.display = 'block';
-}
-function coSelectProd(i) {
-  _coSelProd = _coFiltProds[i];
-  document.getElementById('co-prod-search').value = _coSelProd.name;
-  document.getElementById('co-prod-results').style.display = 'none';
-}
-function coAddProduct() {
-  if (!_coSelProd) { alert('Select a product first.'); return; }
-  var qty = parseFloat(document.getElementById('co-add-qty').value) || 1;
-  var existing = _coItems.find(function(it) { return it.product_id === _coSelProd.id && it._st !== 'removed'; });
-  if (existing) {
-    existing.qty += qty;
-    if (existing._st === 'original') existing._st = 'modified';
-  } else {
-    _coItems.push({ product_id:_coSelProd.id, name:_coSelProd.name, unit:_coSelProd.unit||'',
-      price:parseFloat(_coSelProd.price)||0, cat:_coSelProd.cat||'', tax:_coSelProd.tax||false,
-      qty:qty, line_total:parseFloat((parseFloat(_coSelProd.price||0)*qty).toFixed(2)),
-      note:'', _st:'added', _oQty:0, _oPrice:parseFloat(_coSelProd.price)||0 });
-  }
-  _coSelProd = null;
-  document.getElementById('co-prod-search').value = '';
-  document.getElementById('co-add-qty').value = '1';
-  coRenderItems();
-}
-document.addEventListener('click', function(e) {
-  var res = document.getElementById('co-prod-results');
-  if (res && !e.target.closest('#co-prod-results') && e.target.id !== 'co-prod-search')
-    res.style.display = 'none';
-});
-
-function coDiff() {
-  var added=[], removed=[], modified=[];
-  _coItems.forEach(function(it) {
-    if (it._st==='added')
-      added.push({product_id:it.product_id,name:it.name,unit:it.unit,price:it.price,qty:it.qty,line_total:parseFloat((it.price*it.qty).toFixed(2))});
-    else if (it._st==='removed')
-      removed.push({product_id:it.product_id,name:it.name,qty:it._oQty,price:it._oPrice});
-    else if (it._st==='modified')
-      modified.push({product_id:it.product_id,name:it.name,unit:it.unit,orig_qty:it._oQty,qty:it.qty,orig_price:it._oPrice,price:it.price,line_total:parseFloat((it.price*it.qty).toFixed(2))});
-  });
-  return { added:added, removed:removed, modified:modified };
-}
-function coNewTotal() {
-  var t = 0;
-  _coItems.filter(function(it){return it._st!=='removed';}).forEach(function(it){t+=parseFloat((it.price*it.qty).toFixed(2));});
-  return parseFloat(t.toFixed(2));
-}
-
-async function coSaveDraft() {
-  var desc   = document.getElementById('co-desc-input').value.trim();
-  var reason = document.getElementById('co-reason-input').value.trim();
-  if (!desc) { coShowAlert('Enter a description first.', 'danger'); return false; }
-  document.getElementById('co-save-status').textContent = 'Saving…';
-  const { data: { session } } = await _supa.auth.getSession();
-  if (!session) { coShowAlert('Not signed in.', 'danger'); return false; }
-  var diff = coDiff(), newT = coNewTotal();
-  var payload = { quote_id:_coQuoteId, tenant_id:'5249f9c0-9fca-46c8-896c-4e35be437024',
-    created_by:session.user.id, co_number:document.getElementById('co-num-input').value,
-    findings:desc, reason:reason,
-    items:{ added:diff.added, removed:diff.removed, modified:diff.modified },
-    original_amount:_coOrigTotal, total:newT, status:'draft' };
-  var url  = _coId ? '/rest/v1/change_orders?id=eq.'+_coId : '/rest/v1/change_orders';
-  var meth = _coId ? 'PATCH' : 'POST';
-  var r = await fetch(SUPABASE_URL + url, {
-    method: meth,
-    headers: { 'apikey':SUPABASE_ANON_KEY, 'Authorization':'Bearer '+session.access_token,
-      'Content-Type':'application/json', 'Prefer':'return=representation' },
-    body: JSON.stringify(payload)
-  });
-  var data = await r.json();
-  var rec  = Array.isArray(data) ? data[0] : data;
-  if (!r.ok) {
-    document.getElementById('co-save-status').textContent='';
-    coShowAlert('Save failed: '+(rec && rec.message ? rec.message : r.status),'danger');
-    return false;
-  }
-  if (!_coId && rec && rec.id) {
-    _coId = rec.id;
-    document.getElementById('co-panel-badge').textContent = rec.co_number || '';
-    document.getElementById('co-panel-badge').style.display = '';
-  }
-  document.getElementById('co-save-status').textContent = 'Saved ✓';
-  setTimeout(function(){ document.getElementById('co-save-status').textContent = ''; }, 2500);
-  return true;
-}
-
-function openCoSendModal()  {
-  document.getElementById('co-send-alert').style.display='none';
-  document.getElementById('coSendModal').style.display='flex';
+function openCoSendModal() {
+  const modal = document.getElementById('coSendModal');
+  if (modal) modal.style.display = 'flex';
 }
 function closeCoSendModal() {
-  document.getElementById('coSendModal').style.display='none';
+  const modal = document.getElementById('coSendModal');
+  if (modal) modal.style.display = 'none';
 }
-
-async function coSendForSig() {
-  var name  = document.getElementById('co-send-name').value.trim();
-  var email = document.getElementById('co-send-email').value.trim();
-  if (!name||!email) { coSendAlert('Name and email required.'); return; }
-  var ok = await coSaveDraft();
-  if (!ok||!_coId) { coSendAlert('Save failed — fix errors first.'); return; }
-  var btn = document.getElementById('co-send-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle"></span> Sending…';
-  const { data: { session } } = await _supa.auth.getSession();
-  if (!session) { coSendAlert('Not signed in.'); btn.disabled=false; btn.innerHTML='Send Email ✉️'; return; }
-  var docHtml = coBuiltDoc(name);
-  var r = await fetch(SUPABASE_URL + '/functions/v1/send-for-signature', {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+session.access_token },
-    body: JSON.stringify({ quote_id:_coQuoteId, change_order_id:_coId, customer_name:name,
-      customer_email:email, document_html:docHtml,
-      tenant_id:'5249f9c0-9fca-46c8-896c-4e35be437024',
-      document_summary:{ type:'Change Order', project_num:document.getElementById('co-num-input').value, total:coNewTotal() } })
+function closeCoListModal() {
+  const modal = document.getElementById('coListModal');
+  if (modal) modal.style.display = 'none';
+}
+function coAddProduct() {
+  const container = document.getElementById('coProductsContainer');
+  if (!container) return;
+  const idx = container.querySelectorAll('.co-product-row').length;
+  const row = document.createElement('div');
+  row.className = 'co-product-row';
+  row.innerHTML = `
+    <input type="text" placeholder="Description" class="co-prod-desc" />
+    <input type="number" placeholder="Qty" class="co-prod-qty" style="width:70px" />
+    <input type="number" placeholder="Price" class="co-prod-price" style="width:90px" />
+    <button onclick="this.closest('.co-product-row').remove()" class="btn-sm btn-danger">✕</button>
+  `;
+  container.appendChild(row);
+}
+async function coSaveDraft() {
+  const notesEl = document.getElementById('coNotes');
+  const notes = notesEl ? notesEl.value.trim() : '';
+  const rows = document.querySelectorAll('.co-product-row');
+  const items = [];
+  rows.forEach(r => {
+    const desc = r.querySelector('.co-prod-desc')?.value.trim();
+    const qty = parseFloat(r.querySelector('.co-prod-qty')?.value) || 1;
+    const price = parseFloat(r.querySelector('.co-prod-price')?.value) || 0;
+    if (desc) items.push({ desc, qty, price });
   });
-  var d = await r.json();
-  btn.disabled=false; btn.innerHTML='Send Email ✉️';
-  if (!r.ok) { coSendAlert('Failed: '+(d.error||r.status)); return; }
-  closeCoSendModal();
-  coShowAlert('Sent to '+email+' for signature ✅', 'success');
-  document.getElementById('co-btn-send').disabled=true;
-  document.getElementById('co-btn-send').textContent='✅ Sent';
-}
-
-function coSendAlert(msg) {
-  var el = document.getElementById('co-send-alert');
-  el.innerHTML = '<div style="background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;border-radius:6px;padding:10px 13px;font-size:13px;margin-top:10px">'+msg+'</div>';
-  el.style.display='';
-}
-function coShowAlert(msg, type) {
-  var el = document.getElementById('co-alert');
-  var bg = type==='success'?'#d4edda':'#f8d7da';
-  var fg = type==='success'?'#155724':'#721c24';
-  var br = type==='success'?'#c3e6cb':'#f5c6cb';
-  el.innerHTML = '<div style="background:'+bg+';color:'+fg+';border:1px solid '+br+';border-radius:7px;padding:11px 15px;font-size:13px">'+msg+'</div>';
-  el.style.display='';
-  el.scrollIntoView({behavior:'smooth',block:'start'});
-}
-
-function coBuiltDoc(custName) {
-  var diff=coDiff(), newT=coNewTotal(), delta=parseFloat((newT-_coOrigTotal).toFixed(2));
-  var coNum=document.getElementById('co-num-input').value;
-  var desc=document.getElementById('co-desc-input').value.trim();
-  var rsn=document.getElementById('co-reason-input').value.trim();
-  var today=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-  function fm(n){return '$'+Math.abs(parseFloat(n)).toLocaleString('en-US',{minimumFractionDigits:2});}
-  function dr(it,lbl,bg,fg,sign){
-    var qty=it.qty||it.orig_qty||0;
-    return '<tr><td style="padding:7px 10px">'+it.name+' <em style="color:#888;font-size:11px">×'+qty+' '+(it.unit||'')+'</em></td>'
-      +'<td style="padding:7px 10px;text-align:center"><span style="background:'+bg+';color:'+fg+';font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px">'+lbl+'</span></td>'
-      +'<td style="padding:7px 10px;text-align:right;font-weight:700;color:'+fg+'">'+sign+fm(it.price*(it.qty||it.orig_qty||0))+'</td></tr>';
+  if (!currentQuoteId) { alert('Save the quote first.'); return; }
+  try {
+    const { error } = await _supa.from('change_orders').insert({
+      quote_id: currentQuoteId,
+      tenant_id: TENANT_ID,
+      notes,
+      items,
+      status: 'draft',
+      created_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    alert('Change order saved as draft.');
+    closeCoPanel();
+  } catch(e) {
+    alert('Error saving change order: ' + e.message);
   }
-  var rows='';
-
-  diff.removed.forEach(function(it){rows+=dr(it,'REMOVED','#f8d7da','#721c24','−');});
-  diff.added.forEach(function(it){rows+=dr(it,'ADDED','#d4edda','#155724','+');});
-  diff.modified.forEach(function(it){rows+=dr(it,'MODIFIED','#fff3cd','#856404','');});
-  if(!rows) rows='<tr><td colspan="3" style="text-align:center;padding:12px;color:#999">No line item changes</td></tr>';
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Change Order '+coNum+'</title></head>'
-    +'<body style="font-family:Arial,sans-serif;color:#1e2a38;margin:0;padding:0">'
-    +'<div style="background:#1a3a5c;padding:20px 30px;display:flex;align-items:center;justify-content:space-between">'
-    +'<div><div style="color:#fff;font-size:20px;font-weight:900">RENEW HOME EXTERIORS</div>'
-    +'<div style="color:#93b4d0;font-size:12px">Roofing · Siding · Windows · Doors</div></div>'
-    +'<div style="text-align:right"><div style="background:#e8a020;color:#fff;font-size:11px;font-weight:800;padding:4px 12px;border-radius:12px">CHANGE ORDER</div>'
-    +'<div style="color:#fff;font-size:20px;font-weight:900;font-family:monospace;margin-top:4px">'+coNum+'</div></div></div>'
-    +'<div style="padding:24px 30px">'
-    +'<table style="width:100%;font-size:13px;border-collapse:collapse;margin-bottom:20px">'
-    +'<tr><td style="padding:5px 0;color:#6b7a90;width:130px">Date</td><td style="font-weight:600">'+today+'</td>'
-    +'<td style="padding:5px 0;color:#6b7a90;width:130px">Customer</td><td style="font-weight:600">'+custName+'</td></tr></table>'
-    +'<div style="background:#f4f7fb;border-radius:8px;padding:14px 18px;margin-bottom:20px">'
-    +'<div style="font-size:11px;font-weight:700;color:#6b7a90;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Subject</div>'
-    +'<div style="font-size:15px;font-weight:700">'+desc+'</div>'
-    +(rsn?'<div style="margin-top:8px;font-size:11px;font-weight:700;color:#6b7a90;text-transform:uppercase">Reason</div><div style="font-size:13px;margin-top:3px">'+rsn+'</div>':'')
-    +'</div>'
-    +'<table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;border:1px solid #e8edf5">'
-    +'<thead><tr style="background:#f4f7fb">'
-    +'<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:#6b7a90;text-transform:uppercase">Item</th>'
-    +'<th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:#6b7a90;text-transform:uppercase">Change</th>'
-    +'<th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;color:#6b7a90;text-transform:uppercase">Amount</th>'
-    +'</tr></thead><tbody>'+rows+'</tbody></table>'
-    +'<table style="width:100%;font-size:14px;border-collapse:collapse;margin-bottom:28px">'
-    +'<tr><td style="padding:6px 0;color:#6b7a90">Original Contract Total</td><td style="text-align:right;font-weight:700">'+fm(_coOrigTotal)+'</td></tr>'
-    +'<tr><td style="padding:6px 0;color:#6b7a90">Change Order Amount</td><td style="text-align:right;font-weight:700;color:'+(delta>=0?'#2e7d32':'#c0392b')+'">'+(delta>=0?'+':'-')+fm(Math.abs(delta))+'</td></tr>'
-    +'<tr style="border-top:2px solid #1a3a5c"><td style="padding:10px 0;font-size:17px;font-weight:900;color:#1a3a5c">New Contract Total</td>'
-    +'<td style="text-align:right;font-size:20px;font-weight:900;color:#1a3a5c;padding:10px 0">'+fm(newT)+'</td></tr></table>'
-    +'<p style="font-size:12px;color:#555;font-style:italic;margin-bottom:24px">This Change Order modifies the original contract. All other terms remain in full force.</p>'
-    +'<table style="width:100%;border-collapse:collapse"><tr>'
-    +'<td style="padding:0 30px 0 0;width:50%;vertical-align:top">'
-    +'<div style="font-size:11px;font-weight:700;color:#6b7a90;margin-bottom:6px;text-transform:uppercase">Customer Authorization</div>'
-    +'<div id="rhe-sig-auth" style="border-bottom:1.5px solid #1a3a5c;min-height:60px;margin-bottom:6px;display:flex;align-items:flex-end"><div style="font-size:10px;color:#888;padding-bottom:3px">Signature</div></div>'
-    +'<div style="display:flex;gap:20px;margin-top:6px">'
-    +'<div style="flex:1"><div style="font-size:10px;color:#6b7a90;margin-bottom:3px">Printed Name</div><div style="border-bottom:1px solid #bbb;min-height:22px;font-size:13px;padding-bottom:2px">'+custName+'</div></div>'
-    +'<div style="width:130px"><div style="font-size:10px;color:#6b7a90;margin-bottom:3px">Date</div>'
-    +'<input id="rhe-date" type="date" value="'+new Date().toISOString().split('T')[0]+'" style="border:none;border-bottom:1.5px solid #1a3a5c;font-size:12px;font-weight:600;color:#1a3a5c;padding:2px 4px;width:130px;background:transparent;font-family:inherit"></div>'
-    +'</div></td>'
-    +'<td style="padding:0 0 0 30px;width:50%;border-left:1px solid #e8edf5;vertical-align:top">'
-    +'<div style="font-size:11px;font-weight:700;color:#6b7a90;margin-bottom:6px;text-transform:uppercase">Contractor Authorization</div>'
-    +'<div style="border-bottom:1.5px solid #1a3a5c;min-height:60px;margin-bottom:6px;display:flex;align-items:flex-end"><div style="font-size:10px;color:#888;padding-bottom:3px">Signature</div></div>'
-    +'<div style="display:flex;gap:20px;margin-top:6px">'
-    +'<div style="flex:1"><div style="font-size:10px;color:#6b7a90;margin-bottom:3px">Printed Name</div><div style="border-bottom:1px solid #bbb;min-height:22px;font-size:13px;padding-bottom:2px">Renew Home Exteriors</div></div>'
-    +'<div style="width:130px"><div style="font-size:10px;color:#6b7a90;margin-bottom:3px">Date</div><div style="border-bottom:1px solid #bbb;min-height:22px;font-size:12px;padding-bottom:2px">'+today+'</div></div>'
-    +'</div></td></tr></table>'
-    +'<div style="background:#f4f7fb;border-radius:6px;padding:10px 14px;margin-top:24px;font-size:10px;color:#888;line-height:1.6">'
-    +'By signing electronically you agree to the use of electronic records and signatures as defined by UETA and the federal E-SIGN Act (15 U.S.C. §7001 et seq.).'
-    +'</div></div></body></html>';
 }
-
-// PRODUCTS array is defined at top of script — used by coFilterProducts
+async function coSendForSig() {
+  openCoSendModal();
+}
+function coFilterProducts(val) {
+  const rows = document.querySelectorAll('.co-product-option');
+  rows.forEach(r => {
+    const txt = r.textContent.toLowerCase();
+    r.style.display = txt.includes(val.toLowerCase()) ? '' : 'none';
+  });
+}
 
 </script>
 </body>

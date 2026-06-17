@@ -1,7 +1,7 @@
 // Renew Home Exteriors — Service Worker
 // Caches the app shell for offline use and fast loads
 
-const CACHE = 'rhe-estimator-v1';
+const CACHE = 'rhe-estimator-v15';
 
 const SHELL = [
   '/PricingEstimator.html',
@@ -9,6 +9,7 @@ const SHELL = [
   '/property.html',
   '/change-orders.html',
   '/signing.html',
+  '/reports.html',
   '/manifest.json',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
 ];

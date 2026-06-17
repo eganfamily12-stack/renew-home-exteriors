@@ -516,7 +516,7 @@ async function loadProperty(anchorId) {
   renderCustomerInfo(anchorQuote);
 
   // 3. Fetch all quotes at this address (or by customer name if no address)
-  let quoteUrl = SB_URL + '/rest/v1/quotes?select=id,quote_number,customer_name,customer_address,customer_phone,customer_email,template_id,totals,status,created_at,updated_at,signing_status,satellite_image_url,payment_data&order=created_at.desc&limit=200';
+  let quoteUrl = SB_URL + '/rest/v1/quotes?select=id,quote_number,customer_name,customer_address,customer_phone,customer_email,template_id,totals,status,created_at,updated_at,signing_status,signing_session_id,satellite_image_url,payment_data&order=created_at.desc&limit=200';
   if (addr) {
     quoteUrl += '&customer_address=eq.' + encodeURIComponent(addr);
   } else {
@@ -544,11 +544,33 @@ async function loadProperty(anchorId) {
   }
   allCOs = coData;
 
+  // 5b. Fetch signing session tokens for any quote that has a session
+  const signedSessionIds = allQuotes
+    .filter(q => q.signing_session_id)
+    .map(q => q.signing_session_id);
+  if (signedSessionIds.length) {
+    const sessionInList = '(' + signedSessionIds.join(',') + ')';
+    const rSess = await fetch(
+      SB_URL + '/rest/v1/signing_sessions?id=in.' + sessionInList + '&select=id,token,signed_at',
+      { headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + session.access_token } }
+    );
+    if (rSess.ok) {
+      const sessions = await rSess.json();
+      const sessMap = {};
+      sessions.forEach(s => { sessMap[s.id] = s; });
+      allQuotes.forEach(q => {
+        if (q.signing_session_id && sessMap[q.signing_session_id]) {
+          q._signingSession = sessMap[q.signing_session_id];
+        }
+      });
+    }
+  }
+
   // 5. Fetch all photos for all quotes at this property
   if (qIds.length) {
     const inList = '(' + qIds.join(',') + ')';
     const r3 = await fetch(
-      SB_URL + '/rest/v1/quote_photos?quote_id=in.' + inList + '&select=id,quote_id,url,storage_path,filename,caption,sort_order&order=sort_order.asc,created_at.asc',
+      SB_URL + '/rest/v1/quote_photos?quote_id=in.' + inList + '&select=id,quote_id,url,storage_path,filename,caption,sort_order,notes&order=sort_order.asc,created_at.asc',
       { headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + session.access_token } }
     );
     allPhotos = r3.ok ? (await r3.json()) : [];
@@ -631,14 +653,6 @@ function renderQuotes() {
     const qnum    = q.quote_number || q.id?.slice(0,8).toUpperCase() || '—';
     const coCount = allCOs.filter(co => co.quote_id === q.id).length;
 
-    // Signing status pill
-    let signPill = '';
-    if (q.signing_status === 'signed') {
-      signPill = `<span class="sign-badge sign-signed">✓ Signed</span>`;
-    } else if (q.signing_status === 'pending') {
-      signPill = `<span class="sign-badge sign-pending">⏳ Awaiting Signature</span>`;
-    }
-
     return `
     <div class="quote-card" onclick="openQuote('${q.id}')">
       <div class="quote-card-left">
@@ -646,14 +660,16 @@ function renderQuotes() {
         <div class="qc-name">${h(q.customer_name || '—')}</div>
         <div class="qc-meta" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           ${typeBadge}
-          <span class="badge badge-${q.status || 'draft'}">${q.status || 'draft'}</span>
-          ${signPill}
+          <span class="badge badge-${q.status || 'draft'}" style="color:${statusColor(q.status)}">${q.status || 'draft'}</span>
           ${coCount ? `<span style="font-size:10px;color:var(--muted)">${coCount} CO${coCount !== 1 ? 's' : ''}</span>` : ''}
         </div>
         <div class="qc-actions" onclick="event.stopPropagation()">
           <button class="btn btn-primary" onclick="openQuote('${q.id}')">📋 Open</button>
+          ${q._signingSession?.token
+            ? `<a class="btn btn-ghost" href="https://comforting-truffle-faff94.netlify.app?token=${q._signingSession.token}" target="_blank" style="color:#2e7d32;font-weight:700">📄 View Signed</a>
+               <button class="btn btn-ghost" onclick="window.open('https://comforting-truffle-faff94.netlify.app?token=${q._signingSession.token}','_blank')" style="color:#2e7d32">🖨 Print Signed</button>`
+            : `<button class="btn btn-ghost" onclick="printQuoteFromProperty('${q.id}')">🖨 Print</button>`}
           <button class="btn btn-ghost"   onclick="openCOForQuote('${q.id}')">🔄 Add CO</button>
-          <button class="btn btn-ghost"   onclick="duplicateQuote('${q.id}')">⧉ Duplicate</button>
           <select class="status-select" onchange="updateStatus('${q.id}', this.value)" style="color:${statusColor(q.status)}">
             <option value="draft"  ${q.status==='draft'  ?'selected':''}>Draft</option>
             <option value="sent"   ${q.status==='sent'   ?'selected':''}>Sent</option>
@@ -732,11 +748,78 @@ function renderPhotos() {
         onclick="openPhotoLightbox('${h(p.url)}')">
       <div style="padding:6px 8px">
         ${p.caption ? `<div style="font-size:10px;font-weight:600;color:var(--text);margin-bottom:2px">${h(p.caption)}</div>` : ''}
+        ${p.notes ? `<div style="font-size:10px;color:var(--text);line-height:1.4;margin-bottom:3px;white-space:pre-wrap">${h(p.notes)}</div>` : ''}
         <div style="font-size:9px;color:var(--muted)">Quote ${h(qMap[p.quote_id] || '—')}</div>
       </div>
       <button onclick="deletePropPhoto('${p.id}','${h(p.storage_path||'')}')"
         style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:20px;text-align:center;padding:0">×</button>
     </div>`).join('');
+}
+
+// ─── QUOTE ACTIONS ───────────────────────────────────────────────────
+function openQuote(id) {
+  window.open('PricingEstimator.html?load=' + id, '_blank');
+}
+function printQuoteFromProperty(id) {
+  window.open('PricingEstimator.html?load=' + id + '&autoprint=1', '_blank');
+}
+function openCOForQuote(id) {
+  const q = allQuotes.find(x => x.id === id);
+  const name = q ? encodeURIComponent(q.customer_name || '') : '';
+  window.open('change-orders.html?quote=' + id + '&name=' + name, '_blank');
+}
+async function promptDelete(id, qnum, name) {
+  if (!confirm(`Delete quote ${qnum} for ${name}? This cannot be undone.`)) return;
+  const { data: sd } = await _supa.auth.getSession();
+  if (!sd?.session) return;
+  const res = await fetch(SB_URL + '/rest/v1/quotes?id=eq.' + id, {
+    method: 'DELETE',
+    headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + sd.session.access_token },
+  });
+  if (res.ok) {
+    allQuotes = allQuotes.filter(q => q.id !== id);
+    renderQuotes(); renderStats();
+  } else {
+    alert('Delete failed.');
+  }
+}
+
+// ─── STATUS HELPERS ───────────────────────────────────────────────────
+function statusColor(s) {
+  return s === 'signed' ? '#2e7d32'
+       : s === 'void'   ? '#c62828'
+       : s === 'sent'   ? '#e65100'
+       : '#9e9e9e'; // draft
+}
+
+async function updateStatus(quoteId, newStatus) {
+  if (newStatus === 'void') {
+    const q = allQuotes.find(x => x.id === quoteId);
+    const label = q ? (q.quote_number || quoteId.slice(0,8).toUpperCase()) : quoteId;
+    if (!confirm(`Mark quote ${label} as VOID? This can only be undone manually.`)) {
+      renderQuotes(); // reset the dropdown
+      return;
+    }
+  }
+  const { data: sd } = await _supa.auth.getSession();
+  if (!sd?.session) return;
+  const res = await fetch(SB_URL + '/rest/v1/quotes?id=eq.' + quoteId, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SB_ANON,
+      'Authorization': 'Bearer ' + sd.session.access_token,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify({ status: newStatus }),
+  });
+  if (res.ok) {
+    const q = allQuotes.find(x => x.id === quoteId);
+    if (q) { q.status = newStatus; renderQuotes(); renderStats(); }
+  } else {
+    alert('Status update failed.');
+    renderQuotes();
+  }
 }
 
 function openPhotoLightbox(url) {
