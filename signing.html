@@ -273,6 +273,7 @@ var TOKEN        = null;
 var SESSION_DATA = null;
 var REQUIRED     = [];   // [{key, label, type}]
 var FILLED       = {};   // {key: dataUrl}
+var ALSIDE_KEYS  = [];   // keys of Alside tier initials (mutually exclusive)
 
 var modalField   = null;
 var modalTab     = 'draw';
@@ -441,16 +442,29 @@ function enhanceIframe(iframe) {
   for (var i = 0; i < initLines.length; i++) {
     (function(idx) {
       var key   = 'initials-' + idx;
-      var label = 'Initials — T&C Page ' + (idx + 1);
+      var isAlside = initLines[idx].classList.contains('init-alside-tier');
+      var label = isAlside
+        ? 'Select Option ' + (idx + 1)
+        : 'Initials — T&C Page ' + (idx + 1);
       REQUIRED.push({key:key, label:label, type:'initials'});
+      if (isAlside) ALSIDE_KEYS.push(key);
 
       var ph        = doc.createElement('span');
       ph.className  = 'rhe-ph';
       ph.id         = 'rhe-' + key;
-      ph.textContent= '✏ Tap to initial';
+      ph.textContent= isAlside ? '✏ Initial to select this option' : '✏ Tap to initial';
       ph.addEventListener('click', function() { window.parent.rheOpenModal(key, label); });
       initLines[idx].replaceWith(ph);
     })(i);
+  }
+
+  // If there are Alside tier initials — only ONE of the group is required
+  if (ALSIDE_KEYS.length > 1) {
+    REQUIRED = REQUIRED.filter(function(r) {
+      // Remove all Alside tier keys from required — replace with a single sentinel
+      return ALSIDE_KEYS.indexOf(r.key) === -1;
+    });
+    REQUIRED.push({key:'alside-selection', label:'Select one siding option', type:'initials'});
   }
 
   // Auth sig + date blocks
@@ -502,7 +516,15 @@ function renderProgress() {
       chip.className   = 'prog-chip' + (FILLED[f.key] ? ' done' : '');
       chip.id          = 'chip-' + f.key;
       chip.textContent = (FILLED[f.key] ? '✓ ' : '') + f.label;
-      chip.onclick     = function() { openModal(f.key, f.label); };
+      chip.onclick     = f.key === 'alside-selection'
+        ? function() { /* scroll to first unselected tier option */
+            var iframe = document.querySelector('iframe');
+            if (iframe && iframe.contentDocument) {
+              var ph = iframe.contentDocument.querySelector('.rhe-ph[id^="rhe-initials-"]');
+              if (ph) ph.scrollIntoView({behavior:'smooth', block:'center'});
+            }
+          }
+        : function() { openModal(f.key, f.label); };
       chips.appendChild(chip);
     })(REQUIRED[i]);
   }
@@ -565,6 +587,29 @@ function applyModal() {
   FILLED[modalField] = dataUrl;
   injectIntoIframe(modalField, dataUrl);
   updateChip(modalField);
+
+  // Alside mutual exclusivity — if user initialed one tier, clear the others
+  if (ALSIDE_KEYS.length > 1 && ALSIDE_KEYS.indexOf(modalField) !== -1) {
+    for (var ai = 0; ai < ALSIDE_KEYS.length; ai++) {
+      var otherKey = ALSIDE_KEYS[ai];
+      if (otherKey !== modalField) {
+        delete FILLED[otherKey];
+        // Clear the placeholder/image in the iframe
+        var iframe = document.querySelector('iframe');
+        if (iframe && iframe.contentDocument) {
+          var otherEl = iframe.contentDocument.getElementById('rhe-' + otherKey);
+          if (otherEl) {
+            otherEl.src = undefined;
+            otherEl.outerHTML = '<span class="rhe-ph" id="rhe-' + otherKey + '" style="opacity:.4">— Not selected —</span>';
+          }
+        }
+      }
+    }
+    // Mark the sentinel 'alside-selection' as fulfilled
+    FILLED['alside-selection'] = dataUrl;
+    updateChip('alside-selection');
+  }
+
   var filled = Object.keys(FILLED).length;
   g('prog-count').textContent = filled + ' / ' + REQUIRED.length;
   closeModal();

@@ -294,7 +294,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentSession  = null;
-let currentRole     = null;   // 'admin' | 'rep'
+let currentRole     = null;   // 'platform_owner' | 'super_admin' | 'admin' | 'director' | 'user'
 let allQuotes       = [];
 let filteredQuotes  = [];
 let allReps         = [];     // users list for assignment dropdown
@@ -328,16 +328,19 @@ async function updateAuthUI(session) {
     SUPABASE_URL + '/rest/v1/users?select=role&id=eq.' + session.user.id + '&limit=1',
     { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token } }
   ).then(r => r.json()).catch(() => []);
-  currentRole = ud?.[0]?.role || 'rep';
-  if (currentRole === 'admin') {
+  currentRole = ud?.[0]?.role || 'user';
+  const ADMIN_ROLES   = ['admin','super_admin','platform_owner'];
+  const ELEVATED_ROLES = [...ADMIN_ROLES, 'director'];
+  if (ADMIN_ROLES.includes(currentRole)) {
     document.getElementById('adminBtn').style.display = 'inline-block';
-    // Load all reps for assignment dropdown
+  }
+  if (ELEVATED_ROLES.includes(currentRole)) {
+    // Load all reps for assignment dropdown and rep filter
     const rd = await fetch(
       SUPABASE_URL + '/rest/v1/users?select=id,name,email,role&active=eq.true&order=name.asc',
       { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token } }
     ).then(r => r.json()).catch(() => []);
     allReps = Array.isArray(rd) ? rd : [];
-    // Show rep filter
     document.getElementById('repFilterWrap').style.display = 'flex';
     populateRepFilter();
   }
@@ -418,7 +421,7 @@ function applyFilters() {
   const status   = document.getElementById('statusFilter').value;
   const typeF    = document.getElementById('typeFilter').value;
   const dateF    = document.getElementById('dateFilter').value;
-  const repF     = currentRole === 'admin' ? document.getElementById('repFilter').value : '';
+  const repF     = ['admin','super_admin','platform_owner','director'].includes(currentRole) ? document.getElementById('repFilter').value : '';
   const now      = new Date();
 
   filteredQuotes = allQuotes.filter(quote => {
@@ -510,9 +513,9 @@ function renderTable() {
     const addr = q.customer_address || '—';
     const qnum = q.quote_number || q.id?.slice(0,8).toUpperCase() || '—';
 
-    // Rep cell — admins get an assignment dropdown, reps see name only
+    // Rep cell — elevated roles get an assignment dropdown, users see name only
     let repCell;
-    if (currentRole === 'admin') {
+    if (['admin','super_admin','platform_owner','director'].includes(currentRole)) {
       const opts = [
         `<option value="">— Unassigned —</option>`,
         ...allReps.map(r => `<option value="${r.id}" ${q.assigned_rep_id === r.id ? 'selected' : ''}>${escHtml(r.name || r.email)}</option>`)

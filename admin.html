@@ -104,7 +104,11 @@
   /* STATUS BADGES */
   .badge-active   { background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
   .badge-inactive { background: #f8d7da; color: #721c24; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .badge-platform_owner { background: #1a3a5c; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .badge-super_admin    { background: #6f42c1; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
   .badge-admin    { background: #cce5ff; color: #004085; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .badge-director { background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .badge-user     { background: #e2e3e5; color: #383d41; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
   .badge-rep      { background: #e2e3e5; color: #383d41; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
 
   /* MODAL */
@@ -233,6 +237,7 @@
     <span class="badge">Admin Panel</span>
     <div class="ml">
       <span class="user" id="adminUserName"></span>
+      <a href="platform.html" id="platformLink" style="display:none">⚡ Platform</a>
       <a href="PricingEstimator.html">📋 Estimator</a>
       <a href="change-orders.html">🔄 Change Orders</a>
       <button class="link" onclick="handleLogout()">Sign Out</button>
@@ -689,8 +694,10 @@
       <div class="form-group" style="margin:0">
         <label>Role</label>
         <select id="inv_role" style="width:100%">
-          <option value="rep">Rep (sees own quotes only)</option>
-          <option value="admin">Admin (sees all quotes)</option>
+          <option value="user">User — basic, own quotes only, no reports</option>
+          <option value="director">Director of Sales — all quotes, reports, margins</option>
+          <option value="admin">Admin — full platform + user management</option>
+          <option value="super_admin">Super Admin — all features</option>
         </select>
       </div>
       <div id="inv_status" style="font-size:12px;color:var(--muted);display:none"></div>
@@ -726,16 +733,21 @@ async function init() {
   if (!session) { window.location.href = 'PricingEstimator.html'; return; }
   currentSession = session;
 
-  // Verify admin role
+  // Verify admin/super_admin/platform_owner role
   const res = await dbFetch('/rest/v1/users?select=role,name&id=eq.' + session.user.id + '&limit=1');
   const ud   = await res.json();
-  if (!ud?.[0] || ud[0].role !== 'admin') {
+  const ADMIN_ROLES = ['admin', 'super_admin', 'platform_owner'];
+  if (!ud?.[0] || !ADMIN_ROLES.includes(ud[0].role)) {
     window.location.href = 'PricingEstimator.html';
     return;
   }
+  window._userRole = ud[0].role;
 
   document.getElementById('adminUserName').textContent =
     session.user.user_metadata?.full_name || session.user.email;
+  if (window._userRole === 'platform_owner') {
+    document.getElementById('platformLink').style.display = '';
+  }
   document.getElementById('loadingGate').style.display = 'none';
   document.getElementById('adminApp').style.display     = 'block';
 

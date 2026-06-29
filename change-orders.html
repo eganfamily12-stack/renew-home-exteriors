@@ -180,7 +180,7 @@ textarea{resize:vertical;min-height:70px}
     </table>
 
     <!-- Add Product -->
-    <div class="add-product-row">
+    <div class="add-product-row" id="add-product-row">
       <div style="flex:1;min-width:220px;position:relative">
         <div class="form-group" style="margin:0">
           <label>Add Product</label>
@@ -252,6 +252,7 @@ var selectedProd  = null;
 var originalTotal = 0;
 var _filtProd     = [];
 var _authToken    = null;  // set from URL param or SDK session
+var _coUserRole   = 'user'; // fetched after auth
 
 // ── Auth ──────────────────────────────────────────────────────
 async function signInGoogle() {
@@ -332,6 +333,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     return;
   }
 
+  // Fetch user role
+  var { data: _rSess } = await _supa.auth.getSession();
+  if (_rSess && _rSess.session) {
+    var _rResp = await sbFetch('/rest/v1/users?select=role&id=eq.' + _rSess.session.user.id + '&limit=1');
+    if (_rResp.ok) {
+      var _rData = await _rResp.json();
+      _coUserRole = _rData?.[0]?.role || 'user';
+    }
+  }
+
   var params = new URLSearchParams(location.search);
   quoteId    = params.get('quote_id');
   coId       = params.get('co_id');
@@ -362,6 +373,15 @@ function showForm() {
   document.getElementById('co-details-card').style.display  = '';
   document.getElementById('line-items-card').style.display  = '';
   document.getElementById('actions-card').style.display     = 'flex';
+  // Hide editing controls for basic users
+  if (_coUserRole === 'user') {
+    var addRow = document.getElementById('add-product-row');
+    if (addRow) addRow.style.display = 'none';
+    var saveDraftBtn = document.querySelector('#actions-card .btn-primary');
+    if (saveDraftBtn) saveDraftBtn.style.display = 'none';
+    var sendBtn = document.getElementById('btn-send');
+    if (sendBtn) sendBtn.style.display = 'none';
+  }
 }
 
 // ── Quote Search ──────────────────────────────────────────────
@@ -503,9 +523,9 @@ function renderItems() {
     if (item._status === 'added')    tag = '<span class="item-tag tag-added">+ADDED</span>';
     if (item._status === 'removed')  tag = '<span class="item-tag tag-removed">−REMOVED</span>';
     if (item._status === 'modified') tag = '<span class="item-tag tag-modified">✎MODIFIED</span>';
-    var dim = item._status === 'removed' ? 'opacity:.5' : '';
-    var dis = item._status === 'removed' ? 'disabled' : '';
-    var lt  = (item.price * item.qty).toFixed(2);
+    var dim    = item._status === 'removed' ? 'opacity:.5' : '';
+    var dis    = (item._status === 'removed' || _coUserRole === 'user') ? 'disabled' : '';
+    var lt     = (item.price * item.qty).toFixed(2);
     return '<tr style="' + dim + '">' +
       '<td class="item-name">' + esc(item.name) + tag + '</td>' +
       '<td style="color:#6b7a90;font-size:12px">' + esc(item.unit||'—') + '</td>' +

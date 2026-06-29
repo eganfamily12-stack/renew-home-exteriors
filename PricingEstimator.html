@@ -510,8 +510,8 @@
           <div class="dim-field">
             <label>Waste Factor</label>
             <select id="sidingWaste" onchange="calcSidingSQ()">
-              <option value="1.10">10% Standard</option>
-              <option value="1.15">15% Complex</option>
+              <option value="1.18">18% Standard</option>
+              <option value="1.15">15% Low</option>
               <option value="1.20">20% High Detail</option>
             </select>
           </div>
@@ -1577,12 +1577,17 @@ function updateAuthUI(session) {
         }
       }
     }
-    // Fetch role and show Admin button if admin
+    // Fetch role — show Admin button for elevated roles, enforce discount cap for users
     fetch(
       SUPABASE_URL + '/rest/v1/users?select=role&id=eq.' + session.user.id + '&limit=1',
       { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token } }
     ).then(r => r.json()).then(data => {
-      if (data?.[0]?.role === 'admin') adminBtn.style.display = 'inline-block';
+      const role = data?.[0]?.role || 'user';
+      window._peUserRole = role;
+      const ADMIN_ROLES = ['admin','super_admin','platform_owner'];
+      const MARGIN_ROLES = ['admin','super_admin','platform_owner','director'];
+      if (ADMIN_ROLES.includes(role)) adminBtn.style.display = 'inline-block';
+      if (MARGIN_ROLES.includes(role)) window._peShowMargin = true;
     }).catch(() => {});
   } else {
     gate.style.display      = 'flex';
@@ -2216,7 +2221,7 @@ function calcRoofSQ() {
 
 function calcSidingSQ() {
   const sqft = parseFloat(document.getElementById('sidingSqft').value) || 0;
-  const waste = parseFloat(document.getElementById('sidingWaste').value) || 1.10;
+  const waste = parseFloat(document.getElementById('sidingWaste').value) || 1.18;
   if (sqft > 0) {
     sidingSQ = Math.ceil(sqft * waste / 100 * 10) / 10;
     document.getElementById('sidingSqVal').textContent = sidingSQ.toFixed(1);
@@ -2375,17 +2380,22 @@ function renderQuote() {
   }
   let subtotal = 0, taxTotal = 0;
   const TAX_RATE = 0.065;
+  const showMargin = window._peShowMargin === true;
   let rows = quoteItems.map((item, idx) => {
     const lt = item.product.price * item.qty;
     subtotal += lt;
     if (item.product.tax === 'y') taxTotal += lt * TAX_RATE;
     const step = item.product.unit === 'SQ' ? 0.5 : 1;
+    const marginDollar = showMargin
+      ? `<td style="color:#1a7a4a;font-weight:600;font-size:12px">$${(lt * ((item.product.margin || 0) / 100)).toFixed(2)}</td>`
+      : '';
     return `<tr>
       <td>${idx+1}</td>
       <td><strong>${item.product.name}</strong><br><span class="calc-badge">${item.product.unit}</span></td>
       <td><input type="number" class="qty-input" value="${item.qty}" min="0.1" step="${step}" onchange="updateQty(${idx},this.value)"></td>
       <td>$${item.product.price.toFixed(2)}</td>
       <td class="line-total">$${lt.toFixed(2)}</td>
+      ${marginDollar}
       <td><button class="remove-btn" onclick="removeItem(${idx})">✕</button></td>
     </tr>`;
   }).join('');
@@ -2400,8 +2410,9 @@ function renderQuote() {
     }
   }
   const grand = Math.max(0, preDiscountTotal - discountAmt);
+  const marginHeader = showMargin ? '<th style="color:#1a7a4a">$ Margin</th>' : '';
   el.innerHTML = `<div class="quote-table-scroll"><table class="quote-table">
-    <thead><tr><th>#</th><th>Product / Description</th><th>Qty</th><th>Unit Price</th><th>Total</th><th class="no-print"></th></tr></thead>
+    <thead><tr><th>#</th><th>Product / Description</th><th>Qty</th><th>Unit Price</th><th>Total</th>${marginHeader}<th class="no-print"></th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
   totEl.style.display = 'grid';
@@ -2847,7 +2858,12 @@ function fmtPct(v) { return parseFloat(v.toFixed(4)).toString(); }
 // ── Discount handlers ────────────────────────────────────────
 function applyDiscountDollar() {
   const preDisc = getPreDiscountTotal();
-  const d = Math.max(0, Math.min(parseFloat(document.getElementById('discountDollar').value) || 0, preDisc));
+  const maxDisc = (window._peUserRole === 'user') ? preDisc * 0.15 : preDisc;
+  const d = Math.max(0, Math.min(parseFloat(document.getElementById('discountDollar').value) || 0, maxDisc));
+  if (window._peUserRole === 'user' && parseFloat(document.getElementById('discountDollar').value) > maxDisc) {
+    document.getElementById('discountDollar').value = d.toFixed(2);
+    _showToast('Discount capped at 15% for your role', '#c0392b');
+  }
   discountAmt = d;
   const pctEl = document.getElementById('discountPercent');
   // Only sync percent if user isn't actively editing the percent field
@@ -2860,8 +2876,15 @@ function applyDiscountDollar() {
 function applyDiscountPercent() {
   // Use the currently-displayed total as the base — this is the number the user sees on screen.
   // getGrandTotal() = preDiscountTotal - existing discountAmt, which equals displayed TOTAL.
-  const base = getGrandTotal();
-  const pct  = Math.max(0, Math.min(parseFloat(document.getElementById('discountPercent').value) || 0, 100));
+  const base   = getGrandTotal();
+  const maxPct = (window._peUserRole === 'user') ? 15 : 100;
+  let rawPct   = parseFloat(document.getElementById('discountPercent').value) || 0;
+  if (window._peUserRole === 'user' && rawPct > 15) {
+    document.getElementById('discountPercent').value = '15';
+    rawPct = 15;
+    _showToast('Discount capped at 15% for your role', '#c0392b');
+  }
+  const pct  = Math.max(0, Math.min(rawPct, maxPct));
   discountAmt = base * pct / 100;
   const dolEl = document.getElementById('discountDollar');
   if (dolEl && document.activeElement !== dolEl) {
@@ -3318,6 +3341,7 @@ function buildFullPDFHtml() {
   const stars = '&#9733;&#9733;&#9733;&#9733;&#9733;';
   const pg    = (body, cls) => `<div class="page${cls ? ' ' + cls : ''}">${body}<div class="corner"></div></div>`;
   const initBox = () => `<div class="initials-bar">I acknowledge that I have read and understand this page.&nbsp;&nbsp;Initials:&nbsp;<span class="init-line"></span></div>`;
+  const alsideInitBox = (tierIdx) => `<div class="initials-bar">I am selecting this option.&nbsp;&nbsp;Initials:&nbsp;<span class="init-line init-alside-tier" data-alside-tier="${tierIdx}"></span></div>`;
 
   /* ── Item rows (Description / Qty — no prices shown) ── */
   const colorRows = colors.map(c =>
@@ -3523,9 +3547,7 @@ function buildFullPDFHtml() {
     <h2 class="sec-title">PRICING SUMMARY</h2>
     <div class="price-wrap">
       <table class="tot-table">
-        <tr><td class="tot-lbl">Quote Subtotal</td><td class="tot-val">${fmt$(subtotal)}</td></tr>
-        ${taxTotal > 0 ? `<tr><td class="tot-lbl">Tax (6.5%)</td><td class="tot-val">${fmt$(taxTotal)}</td></tr>` : ''}
-        ${discountAmt > 0 ? `<tr><td class="tot-lbl" style="color:#c0392b">Discount</td><td class="tot-val" style="color:#c0392b">(${fmt$(discountAmt)})</td></tr>` : ''}
+        ${discountAmt > 0 ? `<tr><td class="tot-lbl" style="color:#c0392b">Discount Applied</td><td class="tot-val" style="color:#c0392b">(${fmt$(discountAmt)})</td></tr>` : ''}
         <tr class="grand-row"><td><strong>TOTAL</strong></td><td><strong>${fmt$(grand)}</strong></td></tr>
       </table>
       ${finBox}
@@ -3715,7 +3737,7 @@ function buildFullPDFHtml() {
      ════════════════════════════════════════════════════════ */
   let comparisonPages = '';
   if (isAlsideComparison && alsideTiers && activeTemplate && activeTemplate.tiers) {
-    comparisonPages = activeTemplate.tiers.map(function(tier) {
+    comparisonPages = activeTemplate.tiers.map(function(tier, tierIdx) {
       const items = alsideTiers[tier.key] || [];
       if (!items.length) return '';
       let tierSub = 0;
@@ -3724,8 +3746,7 @@ function buildFullPDFHtml() {
         tierSub += lt;
         const qty = item.qty % 1 === 0 ? item.qty : parseFloat(item.qty).toFixed(2);
         return '<tr><td class="dc">' + h(item.product.name) + '</td>'
-          + '<td class="qc">' + qty + ' ' + item.product.unit + '</td>'
-          + '<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-weight:700">' + fmt$(lt) + '</td></tr>';
+          + '<td class="qc">' + qty + ' ' + item.product.unit + '</td></tr>';
       }).join('');
       const tierFinanced = Math.max(0, tierSub - down);
       const tierFinBox = (useFinancing && _contractSelPlans.length) ? _contractSelPlans.map(function(pp) {
@@ -3741,7 +3762,6 @@ function buildFullPDFHtml() {
         + '<thead><tr style="background:#1a3a5c;color:#fff">'
         + '<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600">Product / Service</th>'
         + '<th style="padding:7px 10px;text-align:center;font-size:11px;font-weight:600">Qty</th>'
-        + '<th style="padding:7px 10px;text-align:right;font-size:11px;font-weight:600">Total</th>'
         + '</tr></thead><tbody>' + tierRows + '</tbody></table>'
         + '<div class="price-wrap">'
         + '<table class="tot-table"><tr class="grand-row"><td><strong>OPTION TOTAL</strong></td><td><strong>' + fmt$(tierSub) + '</strong></td></tr></table>'
@@ -3752,7 +3772,7 @@ function buildFullPDFHtml() {
         + '</div>'
         + '<div style="margin-top:14px;font-size:10px;color:#6b7a90;border-top:1px solid #e8edf5;padding-top:8px"><strong>Warranty:</strong> ' + h(tier.warranty) + '</div>'
         + '</div>'
-        + initBox()
+        + alsideInitBox(tierIdx)
       );
     }).join('');
   }
