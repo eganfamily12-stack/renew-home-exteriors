@@ -425,16 +425,29 @@ let activeOrgData  = null;
 
 // ═══ INIT ═══════════════════════════════════════════════════════════
 (async () => {
-  const { data:{ session } } = await _supa.auth.getSession();
-  if (!session || session.user.email !== PLATFORM_EMAIL) {
+  try {
+    // Always force-refresh so the access_token is never stale
+    let session = null;
+    const { data: existing } = await _supa.auth.getSession();
+    if (existing.session) {
+      const { data: refreshed, error: rErr } = await _supa.auth.refreshSession();
+      session = rErr ? existing.session : (refreshed.session || existing.session);
+    }
+    if (!session || session.user.email !== PLATFORM_EMAIL) {
+      window.location.href = 'PricingEstimator.html';
+      return;
+    }
+    currentSession = session;
+    // Keep token current when Supabase auto-refreshes it
+    _supa.auth.onAuthStateChange((_evt, s) => { if (s) currentSession = s; });
+    document.getElementById('platformUserEmail').textContent = session.user.email;
+    document.getElementById('loadingGate').style.display = 'none';
+    document.getElementById('platformApp').style.display = 'block';
+    loadAll();
+  } catch (err) {
+    console.error('Platform init error:', err);
     window.location.href = 'PricingEstimator.html';
-    return;
   }
-  currentSession = session;
-  document.getElementById('platformUserEmail').textContent = session.user.email;
-  document.getElementById('loadingGate').style.display = 'none';
-  document.getElementById('platformApp').style.display = 'block';
-  loadAll();
 })();
 
 async function handleLogout() {
@@ -847,16 +860,32 @@ async function toggleOrgActive(orgId, currentlyActive) {
 }
 
 // ═══ HELPERS ══════════════════════════════════════════════════════════
-function sbFetch(path, opts = {}) {
-  return fetch(SUPABASE_URL + path, {
+async function sbFetch(path, opts = {}) {
+  const doFetch = (token) => fetch(SUPABASE_URL + path, {
     ...opts,
     headers: {
       'apikey': SUPABASE_ANON,
-      'Authorization': 'Bearer ' + currentSession.access_token,
+      'Authorization': 'Bearer ' + token,
       'Content-Type': 'application/json',
       ...opts.headers
     }
   });
+
+  let res = await doFetch(currentSession.access_token);
+
+  // On 401 try to refresh the token once and retry
+  if (res.status === 401) {
+    const { data: refreshed, error } = await _supa.auth.refreshSession();
+    if (!error && refreshed.session) {
+      currentSession = refreshed.session;
+      res = await doFetch(currentSession.access_token);
+    } else {
+      // Refresh failed — session is dead, send to login
+      window.location.href = 'PricingEstimator.html';
+    }
+  }
+
+  return res;
 }
 
 function openModal(id)  { document.getElementById(id).classList.remove('hidden'); }
