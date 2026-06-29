@@ -536,13 +536,35 @@ async function loadProperty(anchorId) {
     // Supabase: quote_id=in.(id1,id2,...)
     const inList = '(' + qIds.join(',') + ')';
     const r2 = await fetch(
-      SB_URL + '/rest/v1/change_orders?quote_id=in.' + inList + '&select=id,co_number,quote_id,findings,reason,total,original_amount,status,created_at,updated_at&order=created_at.desc&limit=200',
+      SB_URL + '/rest/v1/change_orders?quote_id=in.' + inList + '&select=id,co_number,quote_id,findings,reason,total,original_amount,status,signing_session_id,created_at,updated_at&order=created_at.desc&limit=200',
       { headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + session.access_token } }
     );
     coData = await r2.json();
     if (!Array.isArray(coData)) coData = [];
   }
   allCOs = coData;
+
+  // 4b. Fetch signing session tokens for any CO that has a session
+  const coSessionIds = allCOs
+    .filter(co => co.signing_session_id)
+    .map(co => co.signing_session_id);
+  if (coSessionIds.length) {
+    const coSessInList = '(' + coSessionIds.join(',') + ')';
+    const rCoSess = await fetch(
+      SB_URL + '/rest/v1/signing_sessions?id=in.' + coSessInList + '&select=id,token,signed_at',
+      { headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + session.access_token } }
+    );
+    if (rCoSess.ok) {
+      const coSessions = await rCoSess.json();
+      const coSessMap = {};
+      coSessions.forEach(s => { coSessMap[s.id] = s; });
+      allCOs.forEach(co => {
+        if (co.signing_session_id && coSessMap[co.signing_session_id]) {
+          co._signingSession = coSessMap[co.signing_session_id];
+        }
+      });
+    }
+  }
 
   // 5b. Fetch signing session tokens for any quote that has a session
   const signedSessionIds = allQuotes
@@ -715,6 +737,10 @@ function renderCOs() {
       <td style="color:var(--muted);font-size:11px">${date}</td>
       <td>
         <a href="change-orders.html?co_id=${co.id}" class="btn btn-ghost">Open ↗</a>
+        ${co._signingSession?.token
+          ? `<a class="btn btn-ghost" href="https://comforting-truffle-faff94.netlify.app?token=${co._signingSession.token}" target="_blank" style="color:#2e7d32;font-weight:700">📄 View Signed</a>
+             <button class="btn btn-ghost" onclick="window.open('https://comforting-truffle-faff94.netlify.app?token=${co._signingSession.token}','_blank')" style="color:#2e7d32">🖨 Print</button>`
+          : ''}
       </td>
     </tr>`;
   }).join('');
