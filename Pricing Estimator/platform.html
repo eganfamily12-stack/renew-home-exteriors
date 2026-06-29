@@ -425,16 +425,28 @@ let activeOrgData  = null;
 
 // ═══ INIT ═══════════════════════════════════════════════════════════
 (async () => {
-  const { data:{ session } } = await _supa.auth.getSession();
-  if (!session || session.user.email !== PLATFORM_EMAIL) {
-    window.location.href = 'PricingEstimator.html';
+  const gate = document.getElementById('loadingGate');
+  const gateMsg = gate.querySelector('div:last-child');
+
+  const { data:{ session }, error: sessErr } = await _supa.auth.getSession();
+
+  if (sessErr) {
+    gateMsg.textContent = 'Auth error: ' + sessErr.message;
     return;
   }
+  if (!session) {
+    gateMsg.innerHTML = 'No session found. <a href="PricingEstimator.html" style="color:#fff;text-decoration:underline">Sign in first</a>, then return here.';
+    return;
+  }
+  if (session.user.email.toLowerCase() !== PLATFORM_EMAIL.toLowerCase()) {
+    gateMsg.textContent = 'Access denied. Signed in as: ' + session.user.email;
+    return;
+  }
+
   currentSession = session;
-  // Keep token current whenever Supabase silently refreshes it
   _supa.auth.onAuthStateChange((_evt, s) => { if (s) currentSession = s; });
   document.getElementById('platformUserEmail').textContent = session.user.email;
-  document.getElementById('loadingGate').style.display = 'none';
+  gate.style.display = 'none';
   document.getElementById('platformApp').style.display = 'block';
   loadAll();
 })();
@@ -824,12 +836,4 @@ async function deactivateUser(userId, currentlyActive) {
   });
   if (r.ok) {
     const [updated] = await r.json();
-    const idx = allUsers.findIndex(u => u.id === userId);
-    if (idx >= 0) allUsers[idx] = updated;
-    renderAllUsers();
-    loadOrgUsers();
-    toast('User ' + (currentlyActive ? 'deactivated' : 'activated'));
-  } else { toast('Failed', true); }
-}
-
-// ═══ TOGGLE ORG ACTIVE ══════════════════════════════
+    const i
