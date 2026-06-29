@@ -1,13 +1,12 @@
 // Renew Home Exteriors — Service Worker
-// Network-first for HTML, cache-first for CDN assets
+// Only caches CDN assets. Never intercepts HTML navigation.
 
-const CACHE = 'rhe-estimator-v17';
+const CACHE = 'rhe-estimator-v18';
 
 const CDN_SHELL = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
 ];
 
-// Install — only pre-cache CDN assets (not HTML)
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
@@ -16,7 +15,6 @@ self.addEventListener('install', e => {
   );
 });
 
-// Activate — clean up old caches
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
@@ -25,38 +23,21 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Fetch
 self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
+  // Never intercept navigation requests (page loads) — let the browser handle
+  // them directly so Netlify's cache headers and redirects work correctly
+  if (e.request.mode === 'navigate') return;
 
-  // Always network-only for Supabase API calls
-  if (url.hostname.includes('supabase.co')) {
-    return; // let browser handle it natively
-  }
+  // Never intercept Supabase API calls
+  if (new URL(e.request.url).hostname.includes('supabase.co')) return;
 
-  // Network-first for HTML — use URL string (not e.request) to force redirect:follow
-  if (url.pathname.endsWith('.html') || url.pathname === '/') {
-    e.respondWith(
-      fetch(url.href)          // plain URL string = redirect:follow by default
-        .then(res => {
-          if (res.ok) {
-            const clone = res.clone(); // clone BEFORE returning
-            caches.open(CACHE).then(c => c.put(e.request, clone));
-          }
-          return res;
-        })
-        .catch(() => caches.match(e.request))
-    );
-    return;
-  }
-
-  // Cache-first for CDN / static assets
+  // Cache-first for CDN assets only
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
-      return fetch(url.href).then(res => {
+      return fetch(e.request).then(res => {
         if (res.ok) {
-          const clone = res.clone(); // clone BEFORE returning
+          const clone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
         return res;
