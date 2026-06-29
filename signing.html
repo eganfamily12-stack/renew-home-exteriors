@@ -411,8 +411,9 @@ function enhanceIframe(iframe) {
   var doc = iframe.contentDocument;
   if (!doc || !doc.body) return;
 
-  REQUIRED = [];
-  FILLED   = {};
+  REQUIRED    = [];
+  FILLED      = {};
+  ALSIDE_KEYS = [];
 
   // Inject styles
   var s = doc.createElement('style');
@@ -590,22 +591,26 @@ function applyModal() {
 
   // Alside mutual exclusivity — if user initialed one tier, clear the others
   if (ALSIDE_KEYS.length > 1 && ALSIDE_KEYS.indexOf(modalField) !== -1) {
+    var ifrDoc = g('doc-iframe').contentDocument;
     for (var ai = 0; ai < ALSIDE_KEYS.length; ai++) {
       var otherKey = ALSIDE_KEYS[ai];
       if (otherKey !== modalField) {
         delete FILLED[otherKey];
-        // Clear the placeholder/image in the iframe
-        var iframe = document.querySelector('iframe');
-        if (iframe && iframe.contentDocument) {
-          var otherEl = iframe.contentDocument.getElementById('rhe-' + otherKey);
+        if (ifrDoc) {
+          var otherEl = ifrDoc.getElementById('rhe-' + otherKey);
           if (otherEl) {
-            otherEl.src = undefined;
-            otherEl.outerHTML = '<span class="rhe-ph" id="rhe-' + otherKey + '" style="opacity:.4">— Not selected —</span>';
+            var nullSpan = ifrDoc.createElement('span');
+            nullSpan.className  = 'rhe-ph';
+            nullSpan.id         = 'rhe-' + otherKey;
+            nullSpan.style.opacity = '0.35';
+            nullSpan.textContent = '— Not selected —';
+            (function(k){ nullSpan.addEventListener('click', function(){ window.parent.rheOpenModal(k, 'Select Option'); }); })(otherKey);
+            otherEl.replaceWith(nullSpan);
           }
         }
       }
     }
-    // Mark the sentinel 'alside-selection' as fulfilled
+    // Mark the sentinel as fulfilled
     FILLED['alside-selection'] = dataUrl;
     updateChip('alside-selection');
   }
