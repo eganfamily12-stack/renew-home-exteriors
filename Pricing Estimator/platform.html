@@ -425,29 +425,18 @@ let activeOrgData  = null;
 
 // ═══ INIT ═══════════════════════════════════════════════════════════
 (async () => {
-  try {
-    // Always force-refresh so the access_token is never stale
-    let session = null;
-    const { data: existing } = await _supa.auth.getSession();
-    if (existing.session) {
-      const { data: refreshed, error: rErr } = await _supa.auth.refreshSession();
-      session = rErr ? existing.session : (refreshed.session || existing.session);
-    }
-    if (!session || session.user.email !== PLATFORM_EMAIL) {
-      window.location.href = 'PricingEstimator.html';
-      return;
-    }
-    currentSession = session;
-    // Keep token current when Supabase auto-refreshes it
-    _supa.auth.onAuthStateChange((_evt, s) => { if (s) currentSession = s; });
-    document.getElementById('platformUserEmail').textContent = session.user.email;
-    document.getElementById('loadingGate').style.display = 'none';
-    document.getElementById('platformApp').style.display = 'block';
-    loadAll();
-  } catch (err) {
-    console.error('Platform init error:', err);
+  const { data:{ session } } = await _supa.auth.getSession();
+  if (!session || session.user.email !== PLATFORM_EMAIL) {
     window.location.href = 'PricingEstimator.html';
+    return;
   }
+  currentSession = session;
+  // Keep token current whenever Supabase silently refreshes it
+  _supa.auth.onAuthStateChange((_evt, s) => { if (s) currentSession = s; });
+  document.getElementById('platformUserEmail').textContent = session.user.email;
+  document.getElementById('loadingGate').style.display = 'none';
+  document.getElementById('platformApp').style.display = 'block';
+  loadAll();
 })();
 
 async function handleLogout() {
@@ -832,4 +821,15 @@ async function deactivateUser(userId, currentlyActive) {
   const r = await sbFetch('/rest/v1/users?id=eq.' + userId, {
     method:'PATCH', headers:{'Prefer':'return=representation'},
     body:JSON.stringify({ active: !currentlyActive })
- 
+  });
+  if (r.ok) {
+    const [updated] = await r.json();
+    const idx = allUsers.findIndex(u => u.id === userId);
+    if (idx >= 0) allUsers[idx] = updated;
+    renderAllUsers();
+    loadOrgUsers();
+    toast('User ' + (currentlyActive ? 'deactivated' : 'activated'));
+  } else { toast('Failed', true); }
+}
+
+// ═══ TOGGLE ORG ACTIVE ══════════════════════════════
