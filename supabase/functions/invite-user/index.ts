@@ -36,15 +36,18 @@ Deno.serve(async (req) => {
       .eq('id', caller.id)
       .single();
 
-    if (callerProfile?.role !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Only admins can invite users' }), { status: 403, headers: corsHeaders });
+    const INVITE_ROLES = ['platform_owner', 'super_admin', 'admin'];
+    if (!INVITE_ROLES.includes(callerProfile?.role)) {
+      return new Response(JSON.stringify({ error: 'Insufficient permissions to invite users' }), { status: 403, headers: corsHeaders });
     }
 
-    const { name, email, phone, role } = await req.json();
+    const { name, email, phone, role, tenant_id: bodyTenantId } = await req.json();
     if (!email) return new Response(JSON.stringify({ error: 'Email is required' }), { status: 400, headers: corsHeaders });
 
-    const validRole = ['admin', 'rep'].includes(role) ? role : 'rep';
-    const tenantId  = callerProfile.tenant_id;
+    const VALID_ROLES = ['platform_owner', 'super_admin', 'admin', 'director', 'user', 'rep'];
+    const validRole = VALID_ROLES.includes(role) ? role : 'rep';
+    // platform.html passes tenant_id in body; admin.html uses caller's own tenant
+    const tenantId = bodyTenantId || callerProfile.tenant_id;
 
     // Invite user via Supabase Auth Admin API
     const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
@@ -52,14 +55,21 @@ Deno.serve(async (req) => {
       redirectTo: `${Deno.env.get('SITE_URL') || 'http://localhost:3000'}/PricingEstimator.html`,
     });
 
+    let userId = inviteData?.user?.id;
+
     if (inviteError) {
-      // If user already exists, just update/ensure their profile row
-      if (!inviteError.message.toLowerCase().includes('already')) {
+      // User already exists in auth — look them up by email
+      if (inviteError.message.toLowerCase().includes('already')) {
+        const { data: existing } = await adminClient
+          .from('users')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
+        userId = existing?.id;
+      } else {
         return new Response(JSON.stringify({ error: inviteError.message }), { status: 400, headers: corsHeaders });
       }
     }
-
-    const userId = inviteData?.user?.id;
 
     // Upsert row in public.users
     if (userId) {
