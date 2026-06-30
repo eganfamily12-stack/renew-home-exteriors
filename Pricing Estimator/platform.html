@@ -424,40 +424,37 @@ let activeOrgId    = null;  // when "entered" an org
 let activeOrgData  = null;
 
 // ═══ INIT ═══════════════════════════════════════════════════════════
-// Use onAuthStateChange so we wait for Supabase to finish processing
-// any URL tokens (magic links, OAuth) before checking session state.
-_supa.auth.onAuthStateChange(async (event, session) => {
+(async () => {
   const gate    = document.getElementById('loadingGate');
   const gateMsg = gate.querySelector('div:last-child');
 
-  // Keep token fresh on every state change
-  if (session) currentSession = session;
+  try {
+    // Get stored session
+    const { data: { session: stored } } = await _supa.auth.getSession();
 
-  // Only run gate logic once, on the initial determination
-  if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return;
-  if (gate.style.display === 'none') return; // already opened
+    if (!stored) {
+      gateMsg.innerHTML = 'No session found. <a href="PricingEstimator.html" style="color:#fff;text-decoration:underline">Sign in</a> first.';
+      return;
+    }
+    if (stored.user.email.toLowerCase() !== PLATFORM_EMAIL.toLowerCase()) {
+      gateMsg.textContent = 'Access denied — signed in as: ' + stored.user.email;
+      return;
+    }
 
-  if (!session) {
-    gateMsg.innerHTML = 'No active session. <a href="PricingEstimator.html" style="color:#fff;text-decoration:underline">Sign in</a>, then come back here.';
-    return;
+    currentSession = stored;
+
+    // Keep token current silently going forward
+    _supa.auth.onAuthStateChange((_evt, s) => { if (s) currentSession = s; });
+
+    gate.style.display = 'none';
+    document.getElementById('platformApp').style.display = 'block';
+    document.getElementById('platformUserEmail').textContent = currentSession.user.email;
+    loadAll();
+
+  } catch (e) {
+    gateMsg.textContent = 'Init error: ' + e.message;
   }
-  if (session.user.email.toLowerCase() !== PLATFORM_EMAIL.toLowerCase()) {
-    gateMsg.textContent = 'Access denied — signed in as: ' + session.user.email;
-    return;
-  }
-
-  // Force token refresh before loading data — clears stale access tokens
-  const { error: userErr } = await _supa.auth.getUser();
-  if (userErr) {
-    gateMsg.innerHTML = 'Session expired. <a href="PricingEstimator.html" style="color:#fff;text-decoration:underline">Sign in again</a>.';
-    return;
-  }
-
-  gate.style.display = 'none';
-  document.getElementById('platformApp').style.display = 'block';
-  document.getElementById('platformUserEmail').textContent = session.user.email;
-  loadAll();
-});
+})();
 
 async function handleLogout() {
   await _supa.auth.signOut();
@@ -819,3 +816,7 @@ async function saveEditUser() {
 // ═══ DEACTIVATE USER ══════════════════════════════════════════════════
 async function deactivateUser(userId, currentlyActive) {
   if (!confirm((currentlyActive ? 'Deactivate' : 'Activate') + ' this user?')) return;
+  const { error } = await _supa.from('users').update({ active: !currentlyActive }).eq('id', userId);
+  if (error) { toast('Failed: ' + error.message, true); return; }
+  const idx = allUsers.findIndex(u => u.id === userId);
+  if (idx >= 0) allUsers[idx].active = !current
