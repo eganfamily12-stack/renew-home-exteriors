@@ -416,7 +416,9 @@ const SUPABASE_ANON    = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 const PLATFORM_EMAIL   = 'eganfamily12@gmail.com';
 const TENANT_ID        = '5249f9c0-9fca-46c8-896c-4e35be437024';
 
-const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { autoRefreshToken: false, persistSession: true, detectSessionInUrl: false }
+});
 let currentSession = null;
 let allOrgs        = [];
 let allUsers       = [];
@@ -441,9 +443,15 @@ let activeOrgData  = null;
       return;
     }
 
-    // Refresh access token so data calls never 401
-    const { data: refreshed } = await _supa.auth.refreshSession();
-    currentSession = refreshed?.session || stored;
+    // Validate token is still accepted by auth server
+    const { error: authErr } = await _supa.auth.getUser();
+    if (authErr) {
+      await _supa.auth.signOut();
+      gateMsg.innerHTML = 'Session expired. <a href="PricingEstimator.html" style="color:#fff;text-decoration:underline">Sign in again</a>.';
+      return;
+    }
+
+    currentSession = stored;
 
     // Keep token current silently going forward
     _supa.auth.onAuthStateChange((_evt, s) => { if (s) currentSession = s; });
