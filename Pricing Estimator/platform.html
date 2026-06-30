@@ -426,7 +426,7 @@ let activeOrgData  = null;
 // ═══ INIT ═══════════════════════════════════════════════════════════
 // Use onAuthStateChange so we wait for Supabase to finish processing
 // any URL tokens (magic links, OAuth) before checking session state.
-_supa.auth.onAuthStateChange((event, session) => {
+_supa.auth.onAuthStateChange(async (event, session) => {
   const gate    = document.getElementById('loadingGate');
   const gateMsg = gate.querySelector('div:last-child');
 
@@ -819,4 +819,3 @@ async function saveEditUser() {
 // ═══ DEACTIVATE USER ══════════════════════════════════════════════════
 async function deactivateUser(userId, currentlyActive) {
   if (!confirm((currentlyActive ? 'Deactivate' : 'Activate') + ' this user?')) return;
-  cons
