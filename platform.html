@@ -475,6 +475,21 @@ async function sbFetch(path, { method = 'GET', body, prefer } = {}) {
   return t ? JSON.parse(t) : null;
 }
 
+// Tenant writes go through an edge function to work around PostgREST ES256 JWT limitation
+async function tenantFn(operation, data, id) {
+  const r = await fetch(SUPABASE_URL + '/functions/v1/manage-tenant', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + (currentSession?.access_token || ''),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ operation, data, id }),
+  });
+  const json = await r.json();
+  if (!r.ok) throw new Error(json?.error || r.statusText);
+  return json;
+}
+
 async function tryRefreshToken() {
   if (!currentSession?.refresh_token) return false;
   try {
@@ -582,16 +597,16 @@ async function loadAll() {
 
 async function loadOrgs() {
   try {
-    const data = await sbFetch('tenants?select=*&order=name.asc');
-    allOrgs = data || [];
+    const data = await tenantFn('list_tenants');
+    allOrgs = Array.isArray(data) ? data : [];
     renderOrgs();
   } catch(e) { toast('Failed to load orgs: ' + e.message, true); }
 }
 
 async function loadAllUsers() {
   try {
-    const data = await sbFetch('users?select=*&order=name.asc');
-    allUsers = data || [];
+    const data = await tenantFn('list_all_users');
+    allUsers = Array.isArray(data) ? data : [];
     renderAllUsers();
   } catch(e) { toast('Failed to load users: ' + e.message, true); }
 }
@@ -764,7 +779,7 @@ async function saveOrgDesign() {
     }
   };
   try {
-    await sbFetch('tenants?id=eq.' + activeOrgId, { method: 'PATCH', body: payload });
+    await tenantFn('update', payload, activeOrgId);
   } catch(e) { toast('Save failed — ' + e.message, true); return; }
   toast('Design saved');
   const idx = allOrgs.findIndex(o => o.id === activeOrgId);
@@ -776,7 +791,7 @@ async function saveOrgDesign() {
 async function loadOrgUsers() {
   if (!activeOrgId) return;
   let users;
-  try { users = await sbFetch('users?select=*&tenant_id=eq.' + activeOrgId + '&order=name.asc') || []; }
+  try { users = await tenantFn('list_org_users', null, activeOrgId) || []; }
   catch(e) { toast('Failed to load org users: ' + e.message, true); return; }
   const tbody = document.getElementById('orgUsersBody');
   if (!users.length) {
@@ -828,8 +843,7 @@ async function createOrg() {
   };
   let newOrg;
   try {
-    const result = await sbFetch('tenants', { method: 'POST', body: payload, prefer: 'return=representation' });
-    newOrg = Array.isArray(result) ? result[0] : result;
+    newOrg = await tenantFn('create', payload);
   } catch(e) { toast('Failed: ' + e.message, true); return; }
   allOrgs.push(newOrg);
   renderOrgs();
@@ -926,8 +940,7 @@ async function saveEditUser() {
   const active = document.getElementById('eu_active').value === 'true';
   let updated;
   try {
-    const result = await sbFetch('users?id=eq.' + id, { method: 'PATCH', body: { name, role, active }, prefer: 'return=representation' });
-    updated = Array.isArray(result) ? result[0] : result;
+    updated = await tenantFn('update_user', { name, role, active }, id);
   } catch(e) { toast('Update failed: ' + e.message, true); return; }
   const idx = allUsers.findIndex(u => u.id === id);
   if (idx >= 0) allUsers[idx] = updated;
@@ -940,7 +953,7 @@ async function saveEditUser() {
 // ═══ DEACTIVATE USER ══════════════════════════════════════════════════
 async function deactivateUser(userId, currentlyActive) {
   if (!confirm((currentlyActive ? 'Deactivate' : 'Activate') + ' this user?')) return;
-  try { await sbFetch('users?id=eq.' + userId, { method: 'PATCH', body: { active: !currentlyActive } }); }
+  try { await tenantFn('update_user', { active: !currentlyActive }, userId); }
   catch(e) { toast('Failed: ' + e.message, true); return; }
   const idx = allUsers.findIndex(u => u.id === userId);
   if (idx >= 0) allUsers[idx].active = !currentlyActive;
@@ -952,7 +965,7 @@ async function deactivateUser(userId, currentlyActive) {
 // ═══ TOGGLE ORG ACTIVE ════════════════════════════════════════════════
 async function toggleOrgActive(orgId, currentlyActive) {
   if (!confirm((currentlyActive ? 'Deactivate' : 'Activate') + ' this org?')) return;
-  try { await sbFetch('tenants?id=eq.' + orgId, { method: 'PATCH', body: { active: !currentlyActive } }); }
+  try { await tenantFn('update', { active: !currentlyActive }, orgId); }
   catch(e) { toast('Failed: ' + e.message, true); return; }
   const idx = allOrgs.findIndex(o => o.id === orgId);
   if (idx >= 0) allOrgs[idx].active = !currentlyActive;
@@ -976,9 +989,3 @@ function roleLabel(r) {
 
 function toast(msg, isError=false) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.className = 'show' + (isError?' error':'');
-  clearTimeout(t._t); t._t = setTimeout(()=>{ t.className=''; }, 3200);
-}
-</script>
-</body>
-</html>
