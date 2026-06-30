@@ -464,14 +464,16 @@ async function loadAll() {
 }
 
 async function loadOrgs() {
-  const r = await sbFetch('/rest/v1/tenants?select=*&order=name.asc');
-  allOrgs = r.ok ? await r.json() : [];
+  const { data, error } = await _supa.from('tenants').select('*').order('name');
+  if (error) { toast('Failed to load orgs: ' + error.message, true); return; }
+  allOrgs = data || [];
   renderOrgs();
 }
 
 async function loadAllUsers() {
-  const r = await sbFetch('/rest/v1/users?select=*&order=name.asc');
-  allUsers = r.ok ? await r.json() : [];
+  const { data, error } = await _supa.from('users').select('*').order('name');
+  if (error) { toast('Failed to load users: ' + error.message, true); return; }
+  allUsers = data || [];
   renderAllUsers();
 }
 
@@ -642,24 +644,18 @@ async function saveOrgDesign() {
       insurance:     document.getElementById('d_insurance').value.trim(),
     }
   };
-  const r = await sbFetch('/rest/v1/tenants?id=eq.' + activeOrgId, {
-    method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(payload)
-  });
-  if (r.ok) {
-    toast('Design saved');
-    const idx = allOrgs.findIndex(o => o.id === activeOrgId);
-    if (idx >= 0) allOrgs[idx] = { ...allOrgs[idx], ...payload };
-    activeOrgData = allOrgs[idx];
-  } else {
-    toast('Save failed — ' + r.status, true);
-  }
+  const { error } = await _supa.from('tenants').update(payload).eq('id', activeOrgId);
+  if (error) { toast('Save failed — ' + error.message, true); return; }
+  toast('Design saved');
+  const idx = allOrgs.findIndex(o => o.id === activeOrgId);
+  if (idx >= 0) allOrgs[idx] = { ...allOrgs[idx], ...payload };
+  activeOrgData = allOrgs[idx];
 }
 
 // ═══ ORG USERS ═══════════════════════════════════════════════════════
 async function loadOrgUsers() {
   if (!activeOrgId) return;
-  const r = await sbFetch('/rest/v1/users?tenant_id=eq.' + activeOrgId + '&order=name.asc');
-  const users = r.ok ? await r.json() : [];
+  const { data: users } = await _supa.from('users').select('*').eq('tenant_id', activeOrgId).order('name');
   const tbody = document.getElementById('orgUsersBody');
   if (!users.length) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">No users in this org yet</td></tr>';
@@ -702,27 +698,20 @@ async function createOrg() {
   if (!name || !slug) { toast('Name and slug required', true); return; }
   const payload = {
     name, slug,
-    phone:   document.getElementById('co_phone').value.trim() || null,
-    domain:  document.getElementById('co_domain').value.trim() || null,
-    address: document.getElementById('co_address').value.trim() || null,
-    active:  true,
+    phone:    document.getElementById('co_phone').value.trim() || null,
+    domain:   document.getElementById('co_domain').value.trim() || null,
+    address:  document.getElementById('co_address').value.trim() || null,
+    active:   true,
     settings: {}
   };
-  const r = await sbFetch('/rest/v1/tenants', {
-    method:'POST', headers:{'Prefer':'return=representation'}, body:JSON.stringify(payload)
-  });
-  if (r.ok) {
-    const [newOrg] = await r.json();
-    allOrgs.push(newOrg);
-    renderOrgs();
-    updateStats();
-    closeModal('createOrgModal');
-    toast('Organization created');
-    enterOrg(newOrg.id);
-  } else {
-    const err = await r.json().catch(()=>({}));
-    toast('Failed: ' + (err.message || r.status), true);
-  }
+  const { data: newOrg, error } = await _supa.from('tenants').insert(payload).select().single();
+  if (error) { toast('Failed: ' + error.message, true); return; }
+  allOrgs.push(newOrg);
+  renderOrgs();
+  updateStats();
+  closeModal('createOrgModal');
+  toast('Organization created');
+  enterOrg(newOrg.id);
 }
 
 // ═══ INVITE USER ══════════════════════════════════════════════════════
@@ -810,26 +799,22 @@ async function saveEditUser() {
   const name   = document.getElementById('eu_name').value.trim();
   const role   = document.getElementById('eu_role').value;
   const active = document.getElementById('eu_active').value === 'true';
-  const r = await sbFetch('/rest/v1/users?id=eq.' + id, {
-    method:'PATCH', headers:{'Prefer':'return=representation'},
-    body:JSON.stringify({ name, role, active })
-  });
-  if (r.ok) {
-    const [updated] = await r.json();
-    const idx = allUsers.findIndex(u => u.id === id);
-    if (idx >= 0) allUsers[idx] = updated;
-    renderAllUsers();
-    loadOrgUsers();
-    closeModal('editUserModal');
-    toast('User updated');
-  } else {
-    toast('Update failed', true);
-  }
+  const { data: updated, error } = await _supa.from('users').update({ name, role, active }).eq('id', id).select().single();
+  if (error) { toast('Update failed: ' + error.message, true); return; }
+  const idx = allUsers.findIndex(u => u.id === id);
+  if (idx >= 0) allUsers[idx] = updated;
+  renderAllUsers();
+  loadOrgUsers();
+  closeModal('editUserModal');
+  toast('User updated');
 }
 
 // ═══ DEACTIVATE USER ══════════════════════════════════════════════════
 async function deactivateUser(userId, currentlyActive) {
-  const label = currentlyActive ? 'Deactivate' : 'Activate';
-  if (!confirm(label + ' this user?')) return;
-  const r = await sbFetch('/rest/v1/users?id=eq.' + userId, {
-    meth
+  if (!confirm((currentlyActive ? 'Deactivate' : 'Activate') + ' this user?')) return;
+  const { error } = await _supa.from('users').update({ active: !currentlyActive }).eq('id', userId);
+  if (error) { toast('Failed: ' + error.message, true); return; }
+  const idx = allUsers.findIndex(u => u.id === userId);
+  if (idx >= 0) allUsers[idx].active = !currentlyActive;
+  renderAllUsers();
+  loadOrgUser
