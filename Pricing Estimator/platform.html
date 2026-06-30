@@ -16,9 +16,18 @@
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',Arial,sans-serif;background:var(--light);color:var(--text);font-size:14px}
 
-  /* LOADING GATE */
-  #loadingGate{position:fixed;inset:0;z-index:9999;background:var(--platform);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#fff}
+  /* LOGIN GATE */
+  #loginGate{position:fixed;inset:0;z-index:9999;background:var(--platform);
+    display:flex;align-items:center;justify-content:center;padding:20px}
+  .login-card{background:#fff;border-radius:14px;padding:36px 40px;width:100%;
+    max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+  .login-logo{text-align:center;margin-bottom:28px}
+  .login-logo .logo-mark{font-size:22px;font-weight:900;letter-spacing:-1px;color:var(--primary);display:block;margin-bottom:8px}
+  .login-logo .platform-badge{display:inline-block}
+  .login-err{color:var(--danger);font-size:12px;margin-top:10px;min-height:16px}
+  .login-card .btn{width:100%;margin-top:18px;padding:11px;font-size:14px}
+  .login-card label{margin-top:14px}
+  .login-card label:first-of-type{margin-top:0}
   .spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,0.3);
     border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -161,9 +170,21 @@
 </head>
 <body>
 
-<div id="loadingGate">
-  <div class="spinner"></div>
-  <div style="font-size:13px;opacity:.7;margin-top:4px">Verifying platform access…</div>
+<div id="loginGate">
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="logo-mark">⚡ RHE Platform</span>
+      <span class="platform-badge">PLATFORM OWNER</span>
+    </div>
+    <label>Email</label>
+    <input type="email" id="li_email" autocomplete="username" placeholder="your@email.com"
+      onkeydown="if(event.key==='Enter')document.getElementById('li_pass').focus()">
+    <label>Password</label>
+    <input type="password" id="li_pass" autocomplete="current-password" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="login-err" id="li_err"></div>
+    <button class="btn btn-primary" id="li_btn" onclick="doLogin()">Sign In</button>
+  </div>
 </div>
 
 <div id="platformApp" style="display:none">
@@ -412,53 +433,129 @@
 
 <script>
 const SUPABASE_URL     = 'https://qcpofgrlyhngewspzasa.supabase.co';
-const SUPABASE_ANON    = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcG9mZ3JseWhuZ2V3c3B6YXNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNjE0MjYsImV4cCI6MjA2MjgzNzQyNn0.MzIp78-5gFObXMkGMhbxlpJhWT_vS5LPd3Eh4GEnYNA';
+const SUPABASE_ANON    = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcG9mZ3JseWhuZ2V3c3B6YXNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExODMzNjQsImV4cCI6MjA5Njc1OTM2NH0.vNpEjBGP6Wy4cwcK-ViY2-HpP7KEofNDyj_CxEsMR3U';
 const PLATFORM_EMAIL   = 'eganfamily12@gmail.com';
 const TENANT_ID        = '5249f9c0-9fca-46c8-896c-4e35be437024';
 
-const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const STORAGE_KEY = 'pe_platform_session'; // our key — Supabase client never touches it
+
+// persistSession:false → client NEVER reads/writes localStorage → no internal getUser() on init
+const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
+});
 let currentSession = null;
 let allOrgs        = [];
 let allUsers       = [];
 let activeOrgId    = null;  // when "entered" an org
 let activeOrgData  = null;
 
+// ═══ RAW REST HELPER ════════════════════════════════════════════════
+async function sbFetch(path, { method = 'GET', body, prefer } = {}) {
+  const makeReq = () => {
+    const hdrs = {
+      'apikey':        SUPABASE_ANON,
+      'Authorization': 'Bearer ' + (currentSession?.access_token || ''),
+      'Content-Type':  'application/json',
+    };
+    if (prefer) hdrs['Prefer'] = prefer;
+    return fetch(SUPABASE_URL + '/rest/v1/' + path, {
+      method, headers: hdrs,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  };
+  let r = await makeReq();
+  // If token expired, try silent refresh then retry once
+  if (r.status === 401) {
+    const ok = await tryRefreshToken();
+    if (ok) r = await makeReq();
+  }
+  if (!r.ok) { const t = await r.text(); throw new Error(t); }
+  const t = await r.text();
+  return t ? JSON.parse(t) : null;
+}
+
+async function tryRefreshToken() {
+  if (!currentSession?.refresh_token) return false;
+  try {
+    const r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: currentSession.refresh_token }),
+    });
+    if (!r.ok) return false;
+    const s = await r.json();
+    currentSession = s;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+    return true;
+  } catch { return false; }
+}
+
 // ═══ INIT ═══════════════════════════════════════════════════════════
 (async () => {
-  const gate    = document.getElementById('loadingGate');
-  const gateMsg = gate.querySelector('div:last-child');
+  // Read our own key — Supabase client never touches it, so no internal getUser/logout
+  const stored = (() => {
+    try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; }
+    catch { return null; }
+  })();
 
-  try {
-    // Get stored session
-    const { data: { session: stored } } = await _supa.auth.getSession();
-
-    if (!stored) {
-      gateMsg.innerHTML = 'No session found. <a href="PricingEstimator.html" style="color:#fff;text-decoration:underline">Sign in</a> first.';
+  if (stored?.access_token && stored?.user?.email &&
+      stored.user.email.toLowerCase() === PLATFORM_EMAIL.toLowerCase()) {
+    const now = Math.floor(Date.now() / 1000);
+    const exp = stored.expires_at || 0;
+    if (exp > now + 60) {
+      currentSession = stored;
+      showPlatform();
       return;
     }
-    if (stored.user.email.toLowerCase() !== PLATFORM_EMAIL.toLowerCase()) {
-      gateMsg.textContent = 'Access denied — signed in as: ' + stored.user.email;
-      return;
-    }
-
+    // Token expiring soon — try silent refresh
     currentSession = stored;
-
-    // Keep token current silently going forward
-    _supa.auth.onAuthStateChange((_evt, s) => { if (s) currentSession = s; });
-
-    gate.style.display = 'none';
-    document.getElementById('platformApp').style.display = 'block';
-    document.getElementById('platformUserEmail').textContent = currentSession.user.email;
-    loadAll();
-
-  } catch (e) {
-    gateMsg.textContent = 'Init error: ' + e.message;
+    const ok = await tryRefreshToken();
+    if (ok) { showPlatform(); return; }
   }
+  showLogin();
 })();
 
+function showLogin() {
+  document.getElementById('loginGate').style.display = 'flex';
+  document.getElementById('platformApp').style.display = 'none';
+}
+
+function showPlatform() {
+  document.getElementById('loginGate').style.display = 'none';
+  document.getElementById('platformApp').style.display = 'block';
+  document.getElementById('platformUserEmail').textContent = currentSession.user.email;
+  loadAll();
+}
+
+async function doLogin() {
+  const email = document.getElementById('li_email').value.trim();
+  const pass  = document.getElementById('li_pass').value;
+  const errEl = document.getElementById('li_err');
+  const btn   = document.getElementById('li_btn');
+  errEl.textContent = '';
+  if (!email || !pass) { errEl.textContent = 'Email and password required.'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const { data, error } = await _supa.auth.signInWithPassword({ email, password: pass });
+    if (error) { errEl.textContent = error.message; return; }
+    if (data.user.email.toLowerCase() !== PLATFORM_EMAIL.toLowerCase()) {
+      errEl.textContent = 'Access denied — this platform is restricted.';
+      return;
+    }
+    currentSession = data.session;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(currentSession));
+    showPlatform();
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+}
+
 async function handleLogout() {
-  await _supa.auth.signOut();
-  window.location.href = 'PricingEstimator.html';
+  localStorage.removeItem(STORAGE_KEY);
+  try { await _supa.auth.signOut(); } catch {}
+  showLogin();
 }
 
 // ═══ DATA LOADING ═══════════════════════════════════════════════════
@@ -468,17 +565,19 @@ async function loadAll() {
 }
 
 async function loadOrgs() {
-  const { data, error } = await _supa.from('tenants').select('*').order('name');
-  if (error) { toast('Failed to load orgs: ' + error.message, true); return; }
-  allOrgs = data || [];
-  renderOrgs();
+  try {
+    const data = await sbFetch('tenants?select=*&order=name.asc');
+    allOrgs = data || [];
+    renderOrgs();
+  } catch(e) { toast('Failed to load orgs: ' + e.message, true); }
 }
 
 async function loadAllUsers() {
-  const { data, error } = await _supa.from('users').select('*').order('name');
-  if (error) { toast('Failed to load users: ' + error.message, true); return; }
-  allUsers = data || [];
-  renderAllUsers();
+  try {
+    const data = await sbFetch('users?select=*&order=name.asc');
+    allUsers = data || [];
+    renderAllUsers();
+  } catch(e) { toast('Failed to load users: ' + e.message, true); }
 }
 
 function updateStats() {
@@ -648,8 +747,9 @@ async function saveOrgDesign() {
       insurance:     document.getElementById('d_insurance').value.trim(),
     }
   };
-  const { error } = await _supa.from('tenants').update(payload).eq('id', activeOrgId);
-  if (error) { toast('Save failed — ' + error.message, true); return; }
+  try {
+    await sbFetch('tenants?id=eq.' + activeOrgId, { method: 'PATCH', body: payload });
+  } catch(e) { toast('Save failed — ' + e.message, true); return; }
   toast('Design saved');
   const idx = allOrgs.findIndex(o => o.id === activeOrgId);
   if (idx >= 0) allOrgs[idx] = { ...allOrgs[idx], ...payload };
@@ -659,7 +759,9 @@ async function saveOrgDesign() {
 // ═══ ORG USERS ═══════════════════════════════════════════════════════
 async function loadOrgUsers() {
   if (!activeOrgId) return;
-  const { data: users } = await _supa.from('users').select('*').eq('tenant_id', activeOrgId).order('name');
+  let users;
+  try { users = await sbFetch('users?select=*&tenant_id=eq.' + activeOrgId + '&order=name.asc') || []; }
+  catch(e) { toast('Failed to load org users: ' + e.message, true); return; }
   const tbody = document.getElementById('orgUsersBody');
   if (!users.length) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">No users in this org yet</td></tr>';
@@ -708,8 +810,11 @@ async function createOrg() {
     active:   true,
     settings: {}
   };
-  const { data: newOrg, error } = await _supa.from('tenants').insert(payload).select().single();
-  if (error) { toast('Failed: ' + error.message, true); return; }
+  let newOrg;
+  try {
+    const result = await sbFetch('tenants', { method: 'POST', body: payload, prefer: 'return=representation' });
+    newOrg = Array.isArray(result) ? result[0] : result;
+  } catch(e) { toast('Failed: ' + e.message, true); return; }
   allOrgs.push(newOrg);
   renderOrgs();
   updateStats();
@@ -803,8 +908,11 @@ async function saveEditUser() {
   const name   = document.getElementById('eu_name').value.trim();
   const role   = document.getElementById('eu_role').value;
   const active = document.getElementById('eu_active').value === 'true';
-  const { data: updated, error } = await _supa.from('users').update({ name, role, active }).eq('id', id).select().single();
-  if (error) { toast('Update failed: ' + error.message, true); return; }
+  let updated;
+  try {
+    const result = await sbFetch('users?id=eq.' + id, { method: 'PATCH', body: { name, role, active }, prefer: 'return=representation' });
+    updated = Array.isArray(result) ? result[0] : result;
+  } catch(e) { toast('Update failed: ' + e.message, true); return; }
   const idx = allUsers.findIndex(u => u.id === id);
   if (idx >= 0) allUsers[idx] = updated;
   renderAllUsers();
@@ -816,7 +924,45 @@ async function saveEditUser() {
 // ═══ DEACTIVATE USER ══════════════════════════════════════════════════
 async function deactivateUser(userId, currentlyActive) {
   if (!confirm((currentlyActive ? 'Deactivate' : 'Activate') + ' this user?')) return;
-  const { error } = await _supa.from('users').update({ active: !currentlyActive }).eq('id', userId);
-  if (error) { toast('Failed: ' + error.message, true); return; }
+  try { await sbFetch('users?id=eq.' + userId, { method: 'PATCH', body: { active: !currentlyActive } }); }
+  catch(e) { toast('Failed: ' + e.message, true); return; }
   const idx = allUsers.findIndex(u => u.id === userId);
-  if (idx >= 0) allUsers[idx].active = !current
+  if (idx >= 0) allUsers[idx].active = !currentlyActive;
+  renderAllUsers();
+  loadOrgUsers();
+  toast('User ' + (currentlyActive ? 'deactivated' : 'activated'));
+}
+
+// ═══ TOGGLE ORG ACTIVE ════════════════════════════════════════════════
+async function toggleOrgActive(orgId, currentlyActive) {
+  if (!confirm((currentlyActive ? 'Deactivate' : 'Activate') + ' this org?')) return;
+  try { await sbFetch('tenants?id=eq.' + orgId, { method: 'PATCH', body: { active: !currentlyActive } }); }
+  catch(e) { toast('Failed: ' + e.message, true); return; }
+  const idx = allOrgs.findIndex(o => o.id === orgId);
+  if (idx >= 0) allOrgs[idx].active = !currentlyActive;
+  renderOrgs();
+  updateStats();
+  toast('Org ' + (currentlyActive ? 'deactivated' : 'activated'));
+}
+
+// ═══ HELPERS ══════════════════════════════════════════════════════════
+function openModal(id)  { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function h(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function roleLabel(r) {
+  return {platform_owner:'Platform Owner',super_admin:'Super Admin',
+          admin:'Admin',director:'Director',user:'User',rep:'Rep'}[r] || r || 'User';
+}
+
+function toast(msg, isError=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show' + (isError?' error':'');
+  clearTimeout(t._t); t._t = setTimeout(()=>{ t.className=''; }, 3200);
+}
+</script>
+</body>
+</html>
