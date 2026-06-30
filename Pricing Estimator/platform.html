@@ -424,32 +424,33 @@ let activeOrgId    = null;  // when "entered" an org
 let activeOrgData  = null;
 
 // ═══ INIT ═══════════════════════════════════════════════════════════
-(async () => {
-  const gate = document.getElementById('loadingGate');
+// Use onAuthStateChange so we wait for Supabase to finish processing
+// any URL tokens (magic links, OAuth) before checking session state.
+_supa.auth.onAuthStateChange((event, session) => {
+  const gate    = document.getElementById('loadingGate');
   const gateMsg = gate.querySelector('div:last-child');
 
-  const { data:{ session }, error: sessErr } = await _supa.auth.getSession();
+  // Keep token fresh on every state change
+  if (session) currentSession = session;
 
-  if (sessErr) {
-    gateMsg.textContent = 'Auth error: ' + sessErr.message;
-    return;
-  }
+  // Only run gate logic once, on the initial determination
+  if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return;
+  if (gate.style.display === 'none') return; // already opened
+
   if (!session) {
-    gateMsg.innerHTML = 'No session found. <a href="PricingEstimator.html" style="color:#fff;text-decoration:underline">Sign in first</a>, then return here.';
+    gateMsg.innerHTML = 'No active session. <a href="PricingEstimator.html" style="color:#fff;text-decoration:underline">Sign in</a>, then come back here.';
     return;
   }
   if (session.user.email.toLowerCase() !== PLATFORM_EMAIL.toLowerCase()) {
-    gateMsg.textContent = 'Access denied. Signed in as: ' + session.user.email;
+    gateMsg.textContent = 'Access denied — signed in as: ' + session.user.email;
     return;
   }
 
-  currentSession = session;
-  _supa.auth.onAuthStateChange((_evt, s) => { if (s) currentSession = s; });
-  document.getElementById('platformUserEmail').textContent = session.user.email;
   gate.style.display = 'none';
   document.getElementById('platformApp').style.display = 'block';
+  document.getElementById('platformUserEmail').textContent = session.user.email;
   loadAll();
-})();
+});
 
 async function handleLogout() {
   await _supa.auth.signOut();
@@ -831,9 +832,4 @@ async function deactivateUser(userId, currentlyActive) {
   const label = currentlyActive ? 'Deactivate' : 'Activate';
   if (!confirm(label + ' this user?')) return;
   const r = await sbFetch('/rest/v1/users?id=eq.' + userId, {
-    method:'PATCH', headers:{'Prefer':'return=representation'},
-    body:JSON.stringify({ active: !currentlyActive })
-  });
-  if (r.ok) {
-    const [updated] = await r.json();
-    const i
+    meth
