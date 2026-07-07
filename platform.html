@@ -449,6 +449,8 @@ let allOrgs        = [];
 let allUsers       = [];
 let activeOrgId    = null;  // when "entered" an org
 let activeOrgData  = null;
+let quoteCounts    = {};    // { tenant_id: quoteCount }
+let totalQuotes    = null;  // global quote total (null until loaded)
 
 // ═══ RAW REST HELPER ════════════════════════════════════════════════
 async function sbFetch(path, { method = 'GET', body, prefer } = {}) {
@@ -591,8 +593,27 @@ async function handleLogout() {
 
 // ═══ DATA LOADING ═══════════════════════════════════════════════════
 async function loadAll() {
-  await Promise.all([loadOrgs(), loadAllUsers()]);
+  await Promise.all([loadOrgs(), loadAllUsers(), loadStats()]);
   updateStats();
+  renderOrgs();
+}
+
+async function loadStats() {
+  try {
+    const data = await tenantFn('tenant_stats');
+    quoteCounts = data?.quotes || {};
+    totalQuotes = typeof data?.total === 'number' ? data.total : null;
+  } catch(e) {
+    // Non-fatal: leave counts blank rather than blocking the console
+    console.error('[platform] tenant_stats failed:', e.message);
+    quoteCounts = {};
+    totalQuotes = null;
+  }
+}
+
+// User count per tenant, derived from the already-loaded users list
+function userCountFor(tenantId) {
+  return allUsers.filter(u => u.tenant_id === tenantId).length;
 }
 
 async function loadOrgs() {
@@ -615,7 +636,7 @@ function updateStats() {
   document.getElementById('statOrgs').textContent   = allOrgs.length;
   document.getElementById('statUsers').textContent  = allUsers.length;
   document.getElementById('statActive').textContent = allOrgs.filter(o => o.active !== false).length;
-  document.getElementById('statQuotes').textContent = '—';
+  document.getElementById('statQuotes').textContent = totalQuotes === null ? '—' : totalQuotes;
 }
 
 // ═══ TABS ════════════════════════════════════════════════════════════
@@ -643,6 +664,12 @@ function renderOrgs() {
         ${o.phone ? `📞 ${h(o.phone)}<br>` : ''}
         ${o.address ? `📍 ${h(o.address)}<br>` : ''}
         ${o.domain ? `🌐 ${h(o.domain)}` : ''}
+      </div>
+      <div class="org-metrics" style="display:flex;gap:16px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <div><span style="font-size:18px;font-weight:800;color:var(--primary)">${userCountFor(o.id)}</span>
+          <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-left:3px">Users</span></div>
+        <div><span style="font-size:18px;font-weight:800;color:var(--primary)">${quoteCounts[o.id] ?? '—'}</span>
+          <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-left:3px">Quotes</span></div>
       </div>
       <div style="margin-top:10px">
         <span class="badge ${o.active === false ? 'badge-inactive' : 'badge-active'}">
@@ -989,3 +1016,9 @@ function roleLabel(r) {
 
 function toast(msg, isError=false) {
   const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show' + (isError?' error':'');
+  clearTimeout(t._t); t._t = setTimeout(()=>{ t.className=''; }, 3200);
+}
+</script>
+</body>
+</html>

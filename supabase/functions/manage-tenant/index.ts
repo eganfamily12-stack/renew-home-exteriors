@@ -63,6 +63,21 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify(rows), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    if (operation === 'tenant_stats') {
+      // Per-tenant quote counts (service role bypasses RLS so we can count across all tenants).
+      // Pull only the tenant_id column to keep the payload light, then tally in memory.
+      const { data: rows, error } = await db.from('quotes').select('tenant_id');
+      if (error) return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: corsHeaders });
+      const quotes: Record<string, number> = {};
+      let total = 0;
+      for (const r of rows || []) {
+        if (!r.tenant_id) continue;
+        quotes[r.tenant_id] = (quotes[r.tenant_id] || 0) + 1;
+        total++;
+      }
+      return new Response(JSON.stringify({ quotes, total }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // ── TENANT WRITES ─────────────────────────────────────────────────
 
     if (operation === 'create') {

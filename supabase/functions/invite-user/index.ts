@@ -19,22 +19,28 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Create regular client to verify the caller's role
-    const callerClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
+    // Verify caller via auth service (accepts ES256 tokens)
+    const SUPA_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPA_SRK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const SUPA_ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+    const userResp = await fetch(`${SUPA_URL}/auth/v1/user`, {
+      headers: { 'Authorization': authHeader, 'apikey': SUPA_ANON },
+    });
+    if (!userResp.ok) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+    }
+    const userData = await userResp.json();
+    const callerId = userData?.id;
+    if (!callerId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+
+    // Lookup caller's role via service role key (bypasses RLS, works regardless of JWT algorithm)
+    const profileResp = await fetch(
+      `${SUPA_URL}/rest/v1/users?select=role,tenant_id&id=eq.${callerId}&limit=1`,
+      { headers: { 'apikey': SUPA_SRK, 'Authorization': `Bearer ${SUPA_SRK}` } }
     );
-
-    // Verify caller is admin
-    const { data: { user: caller } } = await callerClient.auth.getUser();
-    if (!caller) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
-
-    const { data: callerProfile } = await adminClient
-      .from('users')
-      .select('role, tenant_id')
-      .eq('id', caller.id)
-      .single();
+    const profiles = profileResp.ok ? await profileResp.json() : [];
+    const callerProfile = profiles[0] || null;
 
     const INVITE_ROLES = ['platform_owner', 'super_admin', 'admin'];
     if (!INVITE_ROLES.includes(callerProfile?.role)) {
