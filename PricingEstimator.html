@@ -2350,8 +2350,11 @@ async function orderEagleView(type) {
     const priced = await evCall({ action: 'price', report: type, address: a });
     if (priced.error) { evStatus('⚠️ ' + priced.error, '#b00'); return; }
     const price = evExtractPrice(priced.result);
-    const ok = confirm('Order EagleView ' + label + ' report for:\n' + a.Address + ', ' + a.City + ', ' + a.State + ' ' + a.Zip +
-      (price != null ? '\n\nPrice: $' + price : '') + '\n\nThis places a PAID order with EagleView.');
+    const isSandbox = (priced.env || 'sandbox') === 'sandbox';
+    const chargeLine = isSandbox
+      ? '\n\n🧪 SANDBOX test order — no charge.'
+      : '\n\n⚠️ This places a PAID order with EagleView' + (price != null ? ' ($' + price + ')' : '') + '.';
+    const ok = confirm('Order EagleView ' + label + ' report for:\n' + a.Address + ', ' + a.City + ', ' + a.State + ' ' + a.Zip + chargeLine);
     if (!ok) { evStatus('Order cancelled.', '#777'); return; }
     evStatus('⏳ Placing ' + label + ' order…');
     const placed = await evCall({ action: 'place', report: type, address: a, price: price, quoteId: (typeof currentQuoteId !== 'undefined' ? currentQuoteId : null) });
