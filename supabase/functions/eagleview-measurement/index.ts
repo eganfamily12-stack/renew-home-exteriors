@@ -127,11 +127,17 @@ function addrKey(a: any) {
 
 function extractReportId(d: any): string | null {
   if (!d) return null
-  const cands = [d?.reportId, d?.ReportId, d?.orderId, d?.OrderId,
-    Array.isArray(d) ? d[0]?.reportId : null,
+  // PlaceOrder returns { OrderId, ReportIds: [<reportId>] }. Measurements are keyed by ReportId,
+  // NOT OrderId — so prefer ReportIds. OrderId is only a last-resort fallback.
+  const cands = [
+    Array.isArray(d?.ReportIds) ? d.ReportIds[0] : null,
+    Array.isArray(d?.reportIds) ? d.reportIds[0] : null,
+    d?.reportId, d?.ReportId,
     Array.isArray(d?.reports) ? d.reports[0]?.reportId : null,
     Array.isArray(d?.OrderReports) ? (d.OrderReports[0]?.ReportId ?? d.OrderReports[0]?.reportId) : null,
-    Array.isArray(d?.Reports) ? (d.Reports[0]?.ReportId ?? d.Reports[0]?.reportId) : null]
+    Array.isArray(d?.Reports) ? (d.Reports[0]?.ReportId ?? d.Reports[0]?.reportId) : null,
+    d?.orderId, d?.OrderId,
+  ]
   for (const c of cands) if (c != null && c !== '') return String(c)
   return null
 }

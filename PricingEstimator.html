@@ -2307,6 +2307,8 @@ function applyEagleViewRoof(roof) {
 // ============================================================
 // EAGLEVIEW MEASUREMENT ORDERS (full roof + siding, property-level)
 // ============================================================
+const EV_CORNER_HEIGHT_FT   = 10;  // assumed corner-post height → estimates corner COUNT from outside-corner LF
+const EV_SOFFIT_OVERHANG_FT = 1;   // assumed roof overhang depth → estimates soffit SQ from roof eaves+rakes
 function evAddress() {
   return {
     Address: (document.getElementById('custAddr').value || '').trim(),
@@ -2395,7 +2397,12 @@ function applyEV(id) {
   const rec = (window._evById || {})[id];
   if (!rec || !rec.measurements || !rec.measurements.summary) { alert('No measurements on this report yet.'); return; }
   const s = rec.measurements.summary;
-  if (rec.report_type === 'roof') applyEVRoof(s); else applyEVSiding(s);
+  if (rec.report_type === 'roof') { applyEVRoof(s); return; }
+  // Siding: also grab a completed roof report for the same address so soffit can be derived from it.
+  const all = Object.values(window._evById || {});
+  const roofRec = all.filter(x => x.report_type === 'roof' && x.status === 'complete' && x.measurements && x.measurements.summary)
+                     .sort((a, b) => new Date(b.delivered_at || 0) - new Date(a.delivered_at || 0))[0];
+  applyEVSiding(s, roofRec ? roofRec.measurements.summary : null);
 }
 
 function applyEVRoof(s) {
@@ -2409,11 +2416,35 @@ function applyEVRoof(s) {
   evStatus('✅ Roof measurements applied to the quote. (Ice &amp; Water and any gutter adjustments are manual.)', '#1a7a2e');
 }
 
-function applyEVSiding(s) {
+function applyEVSiding(s, roofSummary) {
   const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
   if (s.TotalSidingArea != null) { set('sidingSqft', Math.round(evNum(s.TotalSidingArea))); if (typeof calcSidingSQ === 'function') calcSidingSQ(); }
   set('fasciaLF', evNum(s.Fascia));
-  evStatus('✅ Siding measurements applied. (Corners count and soffit are manual — EagleView reports corner lengths, not counts.)', '#1a7a2e');
+
+  // Corners: EagleView gives LENGTH, not a count — estimate the count (outside-corner LF ÷ height), editable after.
+  let cornerNote = '';
+  const cornerLF = evNum(s.TotalOutsideCornersLength);
+  if (cornerLF != null) {
+    const count = Math.max(0, Math.round(cornerLF / EV_CORNER_HEIGHT_FT));
+    set('sidingCorners', count);
+    cornerNote = ' Corners ≈ <strong>' + count + '</strong> (from ' + cornerLF + ' LF ÷ ' + EV_CORNER_HEIGHT_FT + ' ft — adjust if needed).';
+  }
+
+  // Soffit: not in the siding report — derive from the roof report's eave + rake overhang, editable after.
+  let soffitNote = '';
+  if (roofSummary) {
+    const eave = evNum(roofSummary.TotalEavesLength) || 0;
+    const rake = evNum(roofSummary.TotalRakesLength) || 0;
+    if (eave + rake > 0) {
+      const soffitSQ = Math.round((eave + rake) * EV_SOFFIT_OVERHANG_FT / 100 * 10) / 10;
+      set('soffitSQ', soffitSQ);
+      soffitNote = ' Soffit ≈ <strong>' + soffitSQ + ' SQ</strong> (roof eaves+rakes × ' + EV_SOFFIT_OVERHANG_FT + ' ft overhang — adjust if needed).';
+    }
+  } else {
+    soffitNote = ' Soffit needs a Roof report for this address — order one and re-apply, or enter it manually.';
+  }
+
+  evStatus('✅ Siding measurements applied.' + cornerNote + soffitNote, '#1a7a2e');
 }
 
 function calcSidingSQ() {
