@@ -2379,14 +2379,23 @@ async function checkEagleView() {
     const rows = await r.json();
     if (!Array.isArray(rows) || !rows.length) { evStatus('No EagleView reports found for this address yet. Order one above.', '#777'); return; }
     window._evById = {}; rows.forEach(x => window._evById[x.id] = x);
-    const pick = (t) => rows.filter(x => x.report_type === t).sort((x, y) => (y.status === 'complete') - (x.status === 'complete'))[0];
+    const typeLabels = { full: 'Full House (Roof + Siding)', wallsdoors: 'Walls, Windows & Doors', roof: 'Roof', siding: 'Siding' };
+    // Best record per report type: prefer complete, then newest.
+    const byType = {};
+    rows.forEach(x => {
+      const cur = byType[x.report_type];
+      const better = !cur
+        || (x.status === 'complete' && cur.status !== 'complete')
+        || (x.status === cur.status && new Date(x.ordered_at) > new Date(cur.ordered_at));
+      if (better) byType[x.report_type] = x;
+    });
     const line = (rec, t) => {
       if (!rec) return '';
-      if (rec.status === 'complete') return '<div style="margin:4px 0">✅ ' + t + ' report ready — <a href="#" onclick="applyEV(\'' + rec.id + '\');return false" style="color:#1a6bc4;font-weight:700">Apply to quote</a></div>';
-      return '<div style="margin:4px 0">⏳ ' + t + ' report ' + rec.status + ' (EV #' + (rec.ev_report_id || '—') + ') — <a href="#" onclick="refreshEV(\'' + rec.ev_report_id + '\');return false" style="color:#1a6bc4">check now</a></div>';
+      if (rec.status === 'complete') return '<div style="margin:4px 0">✅ ' + t + ' ready — <a href="#" onclick="applyEV(\'' + rec.id + '\');return false" style="color:#1a6bc4;font-weight:700">Apply to quote</a></div>';
+      return '<div style="margin:4px 0">⏳ ' + t + ' ' + rec.status + ' (EV #' + (rec.ev_report_id || '—') + ') — <a href="#" onclick="refreshEV(\'' + rec.ev_report_id + '\');return false" style="color:#1a6bc4">check now</a></div>';
     };
-    const html = line(pick('roof'), 'Roof') + line(pick('siding'), 'Siding');
-    evStatus(html || 'No reports.', '#334');
+    const html = Object.keys(byType).map(t => line(byType[t], typeLabels[t] || t)).join('');
+    evStatus(html || 'No reports for this address yet.', '#334');
   } catch (e) { evStatus('⚠️ ' + (e.message || e), '#b00'); }
 }
 
