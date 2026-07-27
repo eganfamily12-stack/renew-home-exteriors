@@ -424,6 +424,7 @@
       <input type="text" id="custAddr" placeholder="Street address">
       <div class="dim-grid">
         <div class="dim-field"><label>City</label><input type="text" id="custCity" placeholder="City"></div>
+        <div class="dim-field"><label>State</label><input type="text" id="custState" placeholder="OH"></div>
         <div class="dim-field"><label>Zip</label><input type="text" id="custZip" placeholder="00000"></div>
       </div>
       <button onclick="fetchSatellite()" style="width:100%;margin:6px 0 2px;padding:8px;background:#1a3a5c;color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer">📸 Get Property Photo</button>
@@ -457,9 +458,25 @@
         <div class="type-tab" onclick="setProjectType('both')" id="tab-both">🔧 Both</div>
       </div>
 
+      <!-- EAGLEVIEW MEASUREMENT ORDERS -->
+      <div id="ev-panel" style="border:1px solid #d5dae5;border-radius:8px;padding:10px;margin:8px 0;background:#f6f9fc">
+        <div style="font-weight:800;font-size:12px;color:#1a3a5c;margin-bottom:6px">📐 EagleView Reports <span style="font-weight:500;color:#8a97a8">(precise measurements — applies to this property)</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" onclick="orderEagleView('roof')" style="flex:1;min-width:120px;padding:8px;border:1px solid #1a6bc4;background:#fff;color:#1a3a5c;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">🏠 Order Roof Report</button>
+          <button type="button" onclick="orderEagleView('siding')" style="flex:1;min-width:120px;padding:8px;border:1px solid #1a6bc4;background:#fff;color:#1a3a5c;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">🧱 Order Siding Report</button>
+          <button type="button" onclick="checkEagleView()" style="flex:1;min-width:120px;padding:8px;border:1px solid #2e7d32;background:#eaf5ea;color:#1a5a1e;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">🔄 Check / Apply</button>
+        </div>
+        <div id="ev-panel-status" style="display:none;font-size:12px;margin-top:8px;line-height:1.5;padding:8px 10px;border-radius:6px;background:#fff;border:1px solid #e3e8ef"></div>
+      </div>
+
       <!-- ROOF DIMS -->
       <div id="roof-dims">
         <div class="section-label">Roof Measurements</div>
+        <button type="button" id="evRoofBtn" onclick="fetchEagleViewRoof()"
+          style="width:100%;margin:2px 0 8px;padding:9px;border:1px solid #1a6bc4;background:#eaf3fb;color:#1a3a5c;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer">
+          📐 Get Roof Measurements from EagleView
+        </button>
+        <div id="evRoofStatus" style="display:none;font-size:12px;line-height:1.5;margin:0 0 10px;padding:8px 10px;border-radius:6px;background:#f6f8fa"></div>
         <div class="dim-grid">
           <div class="dim-field"><label>Total Sq Ft of Roof</label><input type="number" id="roofSqft" placeholder="e.g. 2400" oninput="calcRoofSQ()"></div>
           <div class="dim-field">
@@ -1584,7 +1601,7 @@ function updateAuthUI(session) {
     ).then(r => r.json()).then(data => {
       const role = data?.[0]?.role || 'user';
       window._peUserRole = role;
-      const ADMIN_ROLES = ['admin','super_admin','platform_owner'];
+      const ADMIN_ROLES = ['admin','super_admin','platform_owner','director'];
       const MARGIN_ROLES = ['admin','super_admin','platform_owner','director'];
       if (ADMIN_ROLES.includes(role)) adminBtn.style.display = 'inline-block';
       if (MARGIN_ROLES.includes(role)) window._peShowMargin = true;
@@ -1746,7 +1763,6 @@ async function saveQuote() {
 
   const payload = {
     tenant_id:          TENANT_ID,
-    created_by:         sd.session.user.id,
     quote_number:       qnum || undefined,
     customer_name:      name,
     customer_address:   [addr, city, zip].filter(Boolean).join(', '),
@@ -1774,6 +1790,7 @@ async function saveQuote() {
     } else {
       // New quote — always starts as draft
       payload.status = 'draft';
+      payload.created_by = sd.session.user.id;
       // Auto-assign a quote number if blank
       if (!payload.quote_number) {
         const nr = await fetch(SUPABASE_URL + '/rest/v1/rpc/next_quote_number', {
@@ -2211,12 +2228,189 @@ function calcRoofSQ() {
   const sqft = parseFloat(document.getElementById('roofSqft').value) || 0;
   const stories = parseFloat(document.getElementById('roofStories').value) || 1;
   if (sqft > 0) {
-    roofSQ = Math.ceil(sqft / 100 * stories * 10) / 10;
+    roofSQ = Math.ceil(sqft / 100 * stories * 1.18 * 10) / 10;
     document.getElementById('roofSqVal').textContent = roofSQ.toFixed(1);
     document.getElementById('roofSqResult').style.display = 'flex';
   } else {
     document.getElementById('roofSqResult').style.display = 'none';
   }
+}
+
+// ============================================================
+// EAGLEVIEW ROOF AUTO-FILL (Property Data API via edge function)
+// ============================================================
+async function fetchEagleViewRoof() {
+  const addr = (document.getElementById('custAddr').value || '').trim();
+  const city = (document.getElementById('custCity').value || '').trim();
+  const zip  = (document.getElementById('custZip').value  || '').trim();
+  if (!addr || !city || !zip) { alert('Enter the property street address, city, and zip first.'); return; }
+  const address = addr + ', ' + city + ', ' + zip;
+
+  const btn = document.getElementById('evRoofBtn');
+  const status = document.getElementById('evRoofStatus');
+  const show = (html, color) => { status.style.display = 'block'; status.style.color = color || '#334'; status.innerHTML = html; };
+  btn.disabled = true;
+  show('⏳ Requesting EagleView roof measurements… this can take up to a minute.');
+
+  try {
+    const { data: { session } } = await _supa.auth.getSession();
+    if (!session) { show('⚠️ Your session expired — please sign in again.', '#b00'); btn.disabled = false; return; }
+    const call = (payload) => fetch(SUPABASE_URL + '/functions/v1/eagleview-roof', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(r => r.json());
+
+    let res = await call({ address });
+    let tries = 0;
+    while (res && res.status === 'in_progress' && res.id && tries < 15) {
+      show('⏳ EagleView is still processing this property… (' + ((tries + 1) * 4) + 's)');
+      await new Promise(r => setTimeout(r, 4000));
+      res = await call({ id: res.id });
+      tries++;
+    }
+
+    if (!res || res.error) { show('⚠️ EagleView error: ' + ((res && res.error) || 'no response'), '#b00'); }
+    else if (res.status !== 'complete' || !res.roof || !res.roof._mapped) { show('⚠️ No roof data found for this address. Verify the address or enter measurements manually.', '#b00'); }
+    else applyEagleViewRoof(res.roof);
+  } catch (e) {
+    show('⚠️ ' + (e && e.message ? e.message : e), '#b00');
+  }
+  btn.disabled = false;
+}
+
+function applyEagleViewRoof(roof) {
+  const status = document.getElementById('evRoofStatus');
+  if (roof.total_roof_area_sqft) {
+    document.getElementById('roofSqft').value = Math.round(roof.total_roof_area_sqft);
+    if (typeof calcRoofSQ === 'function') calcRoofSQ();
+  }
+  // Pitch bucket from primary structure: x/12 -> Flat/Low | Steep 7-10 | Very Steep 11+
+  if (roof.primary_pitch != null) {
+    const p = Number(roof.primary_pitch);
+    const idx = p >= 11 ? 2 : (p >= 7 ? 1 : 0);
+    const btns = document.querySelectorAll('.pitch-btn');
+    if (btns[idx]) btns[idx].click();
+  }
+  const parts = (roof.structures || []).map((s, i) =>
+    '#' + (i + 1) + ': ' + (s.area != null ? Math.round(s.area) + ' sq ft' : '—') + (s.pitch != null ? ', ' + s.pitch + '/12' : '')
+  ).join(' · ');
+  status.style.display = 'block'; status.style.color = '#1a7a2e';
+  status.innerHTML =
+    '✅ <strong>' + Math.round(roof.total_roof_area_sqft) + ' sq ft</strong> total roof across ' +
+    roof.structure_count + ' structure' + (roof.structure_count > 1 ? 's' : '') +
+    ' (~' + roof.total_roof_squares + ' squares, primary pitch ' + roof.primary_pitch + '/12).<br>' +
+    '<span style="color:#667">' + parts + '</span><br>' +
+    '<span style="color:#a60">Ridge / eave / valley / gutter lengths aren\'t provided by EagleView Property Data — enter those manually.</span>';
+}
+
+// ============================================================
+// EAGLEVIEW MEASUREMENT ORDERS (full roof + siding, property-level)
+// ============================================================
+function evAddress() {
+  return {
+    Address: (document.getElementById('custAddr').value || '').trim(),
+    City:    (document.getElementById('custCity').value || '').trim(),
+    State:   (document.getElementById('custState') ? document.getElementById('custState').value : '').trim(),
+    Zip:     (document.getElementById('custZip').value || '').trim(),
+  };
+}
+function evAddrKey(a) {
+  return [a.Address, a.City, a.State, a.Zip].map(x => String(x || '').trim().toLowerCase().replace(/\s+/g, ' ')).join('|');
+}
+function evNum(v) { const n = parseFloat(String(v == null ? '' : v).replace(/[^0-9.]/g, '')); return isNaN(n) ? null : n; }
+function evExtractPrice(result) {
+  if (!result) return null;
+  const c = [result.totalPrice, result.price, result.Price, result.TotalPrice,
+    Array.isArray(result.reports) ? result.reports[0] && result.reports[0].price : null,
+    Array.isArray(result.OrderReports) ? result.OrderReports[0] && result.OrderReports[0].Price : null];
+  for (const x of c) { const n = parseFloat(x); if (!isNaN(n)) return n; }
+  return null;
+}
+function evStatus(html, color) {
+  const st = document.getElementById('ev-panel-status');
+  st.style.display = 'block'; st.style.color = color || '#334'; st.innerHTML = html;
+}
+async function evCall(payload) {
+  const { data: { session } } = await _supa.auth.getSession();
+  if (!session) throw new Error('Session expired — please sign in again.');
+  return fetch(SUPABASE_URL + '/functions/v1/eagleview-measurement', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(r => r.json());
+}
+
+async function orderEagleView(type) {
+  const a = evAddress();
+  if (!a.Address || !a.City || !a.State || !a.Zip) { alert('Enter street address, city, state, and zip first.'); return; }
+  const label = type === 'roof' ? 'Roof' : 'Siding';
+  try {
+    evStatus('⏳ Getting ' + label + ' report price…');
+    const priced = await evCall({ action: 'price', report: type, address: a });
+    if (priced.error) { evStatus('⚠️ ' + priced.error, '#b00'); return; }
+    const price = evExtractPrice(priced.result);
+    const ok = confirm('Order EagleView ' + label + ' report for:\n' + a.Address + ', ' + a.City + ', ' + a.State + ' ' + a.Zip +
+      (price != null ? '\n\nPrice: $' + price : '') + '\n\nThis places a PAID order with EagleView.');
+    if (!ok) { evStatus('Order cancelled.', '#777'); return; }
+    evStatus('⏳ Placing ' + label + ' order…');
+    const placed = await evCall({ action: 'place', report: type, address: a, price: price, quoteId: (typeof currentQuoteId !== 'undefined' ? currentQuoteId : null) });
+    if (placed.error) { evStatus('⚠️ ' + placed.error, '#b00'); return; }
+    evStatus('✅ ' + label + ' report ordered (EagleView #' + (placed.evReportId || '—') + '). It will auto-fill when EagleView delivers it — press <strong>Check / Apply</strong> later, or it arrives automatically via webhook.', '#1a7a2e');
+  } catch (e) { evStatus('⚠️ ' + (e.message || e), '#b00'); }
+}
+
+async function checkEagleView() {
+  const a = evAddress();
+  const key = evAddrKey(a);
+  try {
+    evStatus('⏳ Checking for EagleView measurements…');
+    const { data: { session } } = await _supa.auth.getSession();
+    const r = await fetch(SUPABASE_URL + '/rest/v1/eagleview_reports?select=*&address_key=eq.' + encodeURIComponent(key) + '&order=ordered_at.desc', {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token }
+    });
+    const rows = await r.json();
+    if (!Array.isArray(rows) || !rows.length) { evStatus('No EagleView reports found for this address yet. Order one above.', '#777'); return; }
+    window._evById = {}; rows.forEach(x => window._evById[x.id] = x);
+    const pick = (t) => rows.filter(x => x.report_type === t).sort((x, y) => (y.status === 'complete') - (x.status === 'complete'))[0];
+    const line = (rec, t) => {
+      if (!rec) return '';
+      if (rec.status === 'complete') return '<div style="margin:4px 0">✅ ' + t + ' report ready — <a href="#" onclick="applyEV(\'' + rec.id + '\');return false" style="color:#1a6bc4;font-weight:700">Apply to quote</a></div>';
+      return '<div style="margin:4px 0">⏳ ' + t + ' report ' + rec.status + ' (EV #' + (rec.ev_report_id || '—') + ') — <a href="#" onclick="refreshEV(\'' + rec.ev_report_id + '\');return false" style="color:#1a6bc4">check now</a></div>';
+    };
+    const html = line(pick('roof'), 'Roof') + line(pick('siding'), 'Siding');
+    evStatus(html || 'No reports.', '#334');
+  } catch (e) { evStatus('⚠️ ' + (e.message || e), '#b00'); }
+}
+
+async function refreshEV(evId) {
+  try { evStatus('⏳ Checking EagleView for this report…'); await evCall({ action: 'refresh', reportId: evId }); await checkEagleView(); }
+  catch (e) { evStatus('⚠️ ' + (e.message || e), '#b00'); }
+}
+
+function applyEV(id) {
+  const rec = (window._evById || {})[id];
+  if (!rec || !rec.measurements || !rec.measurements.summary) { alert('No measurements on this report yet.'); return; }
+  const s = rec.measurements.summary;
+  if (rec.report_type === 'roof') applyEVRoof(s); else applyEVSiding(s);
+}
+
+function applyEVRoof(s) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  if (s.TotalRoofArea != null) { set('roofSqft', Math.round(evNum(s.TotalRoofArea))); if (typeof calcRoofSQ === 'function') calcRoofSQ(); }
+  if (s.PredominantPitch) { const p = parseInt(String(s.PredominantPitch), 10); if (!isNaN(p)) { const idx = p >= 11 ? 2 : (p >= 7 ? 1 : 0); const b = document.querySelectorAll('.pitch-btn'); if (b[idx]) b[idx].click(); } }
+  set('ridgeLF', evNum(s.TotalHipsandRidgesLength));
+  set('eaveLF', evNum(s.TotalEavesLength));
+  set('valleyLF', evNum(s.TotalValleysLength));
+  set('gutterLF', evNum(s.TotalEavesLength)); // gutters run along the eaves
+  evStatus('✅ Roof measurements applied to the quote. (Ice &amp; Water and any gutter adjustments are manual.)', '#1a7a2e');
+}
+
+function applyEVSiding(s) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  if (s.TotalSidingArea != null) { set('sidingSqft', Math.round(evNum(s.TotalSidingArea))); if (typeof calcSidingSQ === 'function') calcSidingSQ(); }
+  set('fasciaLF', evNum(s.Fascia));
+  evStatus('✅ Siding measurements applied. (Corners count and soffit are manual — EagleView reports corner lengths, not counts.)', '#1a7a2e');
 }
 
 function calcSidingSQ() {
@@ -2858,9 +3052,10 @@ function fmtPct(v) { return parseFloat(v.toFixed(4)).toString(); }
 // ── Discount handlers ────────────────────────────────────────
 function applyDiscountDollar() {
   const preDisc = getPreDiscountTotal();
-  const maxDisc = (window._peUserRole === 'user') ? preDisc * 0.15 : preDisc;
+  const _capRole = ['user','rep'].includes(window._peUserRole);
+  const maxDisc = _capRole ? preDisc * 0.15 : preDisc;
   const d = Math.max(0, Math.min(parseFloat(document.getElementById('discountDollar').value) || 0, maxDisc));
-  if (window._peUserRole === 'user' && parseFloat(document.getElementById('discountDollar').value) > maxDisc) {
+  if (_capRole && parseFloat(document.getElementById('discountDollar').value) > maxDisc) {
     document.getElementById('discountDollar').value = d.toFixed(2);
     _showToast('Discount capped at 15% for your role', '#c0392b');
   }
@@ -2877,9 +3072,10 @@ function applyDiscountPercent() {
   // Use the currently-displayed total as the base — this is the number the user sees on screen.
   // getGrandTotal() = preDiscountTotal - existing discountAmt, which equals displayed TOTAL.
   const base   = getGrandTotal();
-  const maxPct = (window._peUserRole === 'user') ? 15 : 100;
+  const _capRole2 = ['user','rep'].includes(window._peUserRole);
+  const maxPct = _capRole2 ? 15 : 100;
   let rawPct   = parseFloat(document.getElementById('discountPercent').value) || 0;
-  if (window._peUserRole === 'user' && rawPct > 15) {
+  if (_capRole2 && rawPct > 15) {
     document.getElementById('discountPercent').value = '15';
     rawPct = 15;
     _showToast('Discount capped at 15% for your role', '#c0392b');
@@ -3030,8 +3226,6 @@ async function _doGenerateContract() {
       <td style="padding:7px 10px;border-bottom:1px solid #eee">${i+1}</td>
       <td style="padding:7px 10px;border-bottom:1px solid #eee"><strong>${item.product.name}</strong></td>
       <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center">${item.qty} ${item.product.unit}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right">$${item.product.price.toFixed(2)}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-weight:700">$${lt.toFixed(2)}</td>
     </tr>`;
   }).join('');
   const preDiscountGrand = subtotal + taxTotal;
@@ -3141,8 +3335,6 @@ async function _doGenerateContract() {
           <th style="padding:8px 10px;text-align:left;font-size:11px">#</th>
           <th style="padding:8px 10px;text-align:left;font-size:11px">Description</th>
           <th style="padding:8px 10px;text-align:center;font-size:11px">Qty / Unit</th>
-          <th style="padding:8px 10px;text-align:right;font-size:11px">Unit Price</th>
-          <th style="padding:8px 10px;text-align:right;font-size:11px">Total</th>
         </tr></thead>
         <tbody>${itemRows}</tbody>
       </table>
@@ -3471,7 +3663,7 @@ function buildFullPDFHtml() {
     <div class="insp-grid" style="grid-template-columns:${quotePhotos.length === 1 ? '1fr' : '1fr 1fr'}">
       ${_inspCells}
     </div>
-    ${initBox()}
+    ${isAlsideComparison ? initBox() : ''}
   `);
 
   /* ════════════════════════════════════════════════════════
@@ -3537,7 +3729,7 @@ function buildFullPDFHtml() {
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.7px;color:#1a3a5c;margin-bottom:4px">Warranty</div>
         <div style="font-size:11px;line-height:1.6;color:#1e2a38">${h(tpl.warranty)}</div>
       </div>` : ''}
-    ${initBox()}
+    ${isAlsideComparison ? initBox() : ''}
   `);
 
   /* ════════════════════════════════════════════════════════
@@ -3626,7 +3818,7 @@ function buildFullPDFHtml() {
     <p><strong>4. Existing Structural Problems</strong> such as loose or cracked plaster and drywall, sagging rafters, nail pops, bowed walls, previously rotted or damaged siding materials, etc. may be further aggravated. Contractor is not responsible for structural soundness and shall have no liability whatsoever for the failure of the supporting structure. Contractor is not responsible for damage done to driveways and sidewalks.</p>
     <p><strong>5.</strong> After three (3) business days from the date of this contract, by law, this contract is not subject to cancellation by the Buyer(s) without payment to Seller of not less than thirty-five percent (35%) of the amount of the total contract.</p>
     <p><strong>6. Alterations:</strong> Contractor agrees only to perform the work outlined on the front of this contract. Any alterations or deviation from the listed specifications involving unforeseen extra costs will become an extra charge over and above the estimate and contract price.</p>
-    </div>${initBox()}`;
+    </div>${isAlsideComparison ? initBox() : ''}`;
   const rTC2 = `
     <div class="tc">
     <p><strong>7. Hazardous Substances.</strong> Contractor&rsquo;s scope of work shall not include the detection, abatement, encapsulation or removal of asbestos or similar hazardous substances. Contractor has the right to discontinue work if hazardous materials are discovered.</p>
@@ -3640,7 +3832,7 @@ function buildFullPDFHtml() {
     <p><strong>15.</strong> This agreement contains the entire Contract between the parties. All previous discussions, oral representations, proposals and agreements have been merged into this instrument. This Contract shall not be modified unless in writing, signed by the Seller and Buyer.</p>
     <p><strong>16.</strong> I authorize Renew Home Exteriors LLC, and its assignee to make whatever inquiries it deems necessary in connection with this Contract. I further authorize any person or consumer reporting agency to furnish information in response to such inquiries.</p>
     <p><strong>17.</strong> Buyer understands that all construction material is the property of the Seller, and all excess materials are removed from the jobsite by the Seller.</p>
-    </div>${initBox()}`;
+    </div>${isAlsideComparison ? initBox() : ''}`;
   const rTC3 = `
     <div class="tc">
     <p><strong>18. Gutter Replacement Schedule.</strong> There is a normal time lapse between the removal of old gutters and roofing and the installation of new gutters. By authorizing the start date, customer accepts responsibility for flooding or damage caused by the necessary absence of gutters during this time.</p>
@@ -3649,7 +3841,7 @@ function buildFullPDFHtml() {
     <p><strong>21.</strong> After three (3) business days from the date of this contract, this contract is not subject to cancellation by the Buyer(s) without payment to Seller of not less than thirty percent (30%) of the new amount of contract (canceled with penalty only before final measurement occurs). Once final measurements are taken contract is not subject to cancellation without penalty. No verbal discussions in any form for repairs or improvements will be honored unless in writing on a company contract, change order or letterhead.</p>
     <p><strong>22.</strong> Install Date is approximately <strong>${tplTimeline}</strong>. No changes on orders after 3-day notice to cancel. Customer is aware of all terms and conditions, disclaimers, and warranties. Acceptance of Contract &mdash; The prices, specifications, conditions, and separate warranty are satisfactory and hereby accepted. You are authorized to do the work as specified. Payment will be made as specified on this contract.</p>
     <p><strong>23. CONSUMER AUTHORIZATION FOR DIRECT PAYMENT VIA ACH (ACH DEBITS) or Credit Card &mdash;</strong> I (we) authorize Renew Home Exteriors (&ldquo;COMPANY&rdquo;) to electronically debit my (our) account as follows: Checking Account, Savings Account, or Credit Card at the depository financial institution named in the attached voided check or Credit Card account listed. The amount to be debited will be the amount listed on the &ldquo;quote page&rdquo; of the agreed contract with Renew Home Exteriors. I (we) understand that this authorization will remain in full force and effect until I (we) notify &ldquo;COMPANY&rdquo; in writing to RHEOhio@Gmail.com that I (we) wish to revoke this authorization. &ldquo;COMPANY&rdquo; requires at least 10 days&rsquo; notice before the debit date. Any stopped payment or revoke of authorization does not void the amount due to the &ldquo;Company&rdquo; under the agreed contract. Any changes to this contract must be in writing.</p>
-    </div>${initBox()}`;
+    </div>${isAlsideComparison ? initBox() : ''}`;
 
   /* ════════════════════════════════════════════════════════
      T&C — SIDING (3 pages)
@@ -3666,7 +3858,7 @@ function buildFullPDFHtml() {
     <p><strong>5.</strong> Buyer shall pay seller a late charge on all amounts not paid when due, computed at the rate of one and one half percent (1.5%) per month (annual percentage rate of 18%), or the maximum rate permitted by law, beginning on the thirty-first (31st) day from the date of the invoice until paid in full.</p>
     <p><strong>6.</strong> Buyer agrees to pay all reasonable attorneys&rsquo; fees incurred by Seller in relation to the interpretation, construction or enforcement of these Terms and Conditions, including collection costs.</p>
     <p><strong>7.</strong> The terms and conditions, together with the Contract, shall constitute the entire understanding of the parties concerning such sales transactions. The terms and conditions and Seller&rsquo;s invoices may be amended only if actually agreed to in writing and signed by an authorized person on behalf of the Seller.</p>
-    </div>${initBox()}`;
+    </div>${isAlsideComparison ? initBox() : ''}`;
   const sTC2 = `
     <div class="tc">
     <p><strong>8.</strong> No changes can be made to the contract 24 hours after the final measure has been taken. All changes must be in writing to be valid.</p>
@@ -3687,13 +3879,13 @@ function buildFullPDFHtml() {
     <p><strong>23.</strong> The Seller agrees that it will perform this contract in conformity with industry practices and in accordance with the building codes and regulations of the jurisdiction in which the work is being performed.</p>
     <p><strong>24.</strong> Buyer warrants that all elements of the home or building meet the mandatory building codes. In the event building inspectors require additional work not included on the contract, buyer may be responsible for additional cost.</p>
     <p><strong>25.</strong> I authorize Seller and its assignee to make whatever inquiries it deems necessary in connection with this contract. I further authorize any person or consumer reporting agency to furnish information in response to such inquiries.</p>
-    </div>${initBox()}`;
+    </div>${isAlsideComparison ? initBox() : ''}`;
   const sTC3 = `
     <div class="tc">
     <p><strong>26.</strong> After three (3) business days from the date of this contract, this contract is not subject to cancellation by the Buyer(s) without payment to Seller of not less than thirty percent (30%) of the new amount of contract (canceled with penalty only before final measurement occurs). Once final measurements are taken contract is not subject to cancellation without penalty. No verbal discussions in any form for repairs or improvements will be honored unless in writing on a company contract, change order or letterhead.</p>
     <p><strong>27. Install Date Approximately ${tplTimeline}</strong> &mdash; No changes on orders after 3-day notice to cancel. Customer is aware of all terms and conditions, disclaimers, and warranties. Acceptance of Contract &mdash; The prices, specifications, conditions, and separate warranty are satisfactory and hereby accepted. You are authorized to do the work as specified. Payment will be made as specified on this contract.</p>
     <p><strong>28. CONSUMER AUTHORIZATION FOR DIRECT PAYMENT VIA ACH (ACH DEBITS) or Credit Card &mdash;</strong> I (we) authorize Renew Home Exteriors (&ldquo;COMPANY&rdquo;) to electronically debit my (our) account as follows: Checking Account, Savings Account, or Credit Card at the depository financial institution named in the attached voided check or Credit Card account listed. The amount to be debited will be the amount listed on the &ldquo;quote page&rdquo; of the agreed contract with Renew Home Exteriors. I (we) understand that this authorization will remain in full force and effect until I (we) notify &ldquo;COMPANY&rdquo; in writing to RHEOhio@Gmail.com that I (we) wish to revoke this authorization. &ldquo;COMPANY&rdquo; requires at least 10 days&rsquo; notice before the debit date. Any stopped payment or revoke of authorization does not void the amount due to the &ldquo;Company&rdquo; under the agreed contract.</p>
-    </div>${initBox()}`;
+    </div>${isAlsideComparison ? initBox() : ''}`;
 
   /* ════════════════════════════════════════════════════════
      EPA FORM (2 pages — same for both types)
@@ -3718,12 +3910,12 @@ function buildFullPDFHtml() {
     <div class="epa-field">Unit Address</div>
     <p style="color:#c0392b"><strong>Note Regarding Mailing Option</strong> &mdash; As an alternative to delivery in person, you may mail the lead hazard information pamphlet to the owner and/or tenant. Pamphlet must be mailed at least 7 days before renovation. Mailing must be documented by a certificate of mailing from the post office.</p>
     </div>
-    ${initBox()}`);
+    ${isAlsideComparison ? initBox() : ''}`);
   const pgEPA2 = pg(`
     <div class="epa-omg-box">
       <p>This collection of information is approved by OMB under the Paperwork Reduction Act, 44 U.S.C. 3501 et seq. (OMB Control No. 2070-0195). Responses to this collection of information are mandatory (40 CFR 745). An agency may not conduct or sponsor, and a person is not required to respond to, a collection of information unless it displays a currently valid OMB control number. The public reporting and recordkeeping burden for this collection of information is estimated to range from 0.2 to 0.5 hours per response. Send comments on the Agency&rsquo;s need for this information, the accuracy of the provided burden estimates, and any suggested methods for minimizing respondent burden, including through use of automated collection techniques, to the Director, Regulatory Support Division, U.S. Environmental Protection Agency (2821T), 1200 Pennsylvania Ave., NW, Washington, D.C. 20460. Include the OMB control number in any correspondence. Do not send the completed form to this address.</p>
     </div>
-    ${initBox()}`);
+    ${isAlsideComparison ? initBox() : ''}`);
 
   /* ════════════════════════════════════════════════════════
      WRAP T&C STRINGS IN PAGES
