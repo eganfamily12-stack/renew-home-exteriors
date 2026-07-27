@@ -2589,6 +2589,18 @@ function addItemDirect(id, qty) {
 function addProduct(id) {
   const p = PRODUCTS.find(x => x.id === id);
   if (!p) return;
+  // In the 3-tier comparison build phase, add the selected product to ALL three tiers.
+  if (activeTemplate && activeTemplate.type === 'alside_comparison' && alsideTiers) {
+    Object.keys(alsideTiers).forEach(tierKey => {
+      const arr = alsideTiers[tierKey];
+      const existing = arr.find(i => i.product.id === id);
+      if (existing) { existing.qty += 1; }
+      else { arr.push({ product: p, qty: 1, note: '' }); }
+    });
+    renderAlsideTiers();
+    renderProductList();
+    return;
+  }
   const existing = quoteItems.find(i => i.product.id === id);
   if (existing) { existing.qty += 1; }
   else { quoteItems.push({ product: p, qty: 1, note: '' }); }
