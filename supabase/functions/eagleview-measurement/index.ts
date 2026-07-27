@@ -30,9 +30,13 @@ const EV_ENV           = (Deno.env.get('EAGLEVIEW_ENV') || 'sandbox').toLowerCas
 const TOKEN_URL  = 'https://apicenter.eagleview.com/oauth2/v1/token'
 const ORDER_BASE = EV_ENV === 'production' ? 'https://apicenter.eagleview.com' : 'https://sandbox.apicenter.eagleview.com'
 
+// EagleView products the team orders. sandbox IDs must be ones with sandbox mock reports
+// (106/107/108/111); production can use the account's preferred (cheaper legacy) equivalents.
 const PRODUCTS: Record<string, { sandbox: number; production: number }> = {
-  roof:   { sandbox: 106, production: 1 },
-  siding: { sandbox: 107, production: 85 },
+  full:       { sandbox: 111, production: 111 },  // Full House — roof + siding (+ soffit data)
+  wallsdoors: { sandbox: 107, production: 85 },   // Walls, Windows & Doors
+  roof:       { sandbox: 106, production: 1 },     // Roof / Premium - Residential (roof-only)
+  siding:     { sandbox: 107, production: 85 },    // back-compat alias for existing "siding" callers
 }
 const DELIVERY_PRODUCT_ID = 8
 const MEASUREMENT_INSTRUCTION = 3

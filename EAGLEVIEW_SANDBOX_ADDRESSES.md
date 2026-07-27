@@ -21,7 +21,12 @@ Each report type is keyed to specific sandbox addresses.
 - 1919 W 9th Ave, Spokane, WA 99204
 - 19355 Iris St, Chugiak, AK 99567
 
-**Siding report — Walls, Windows & Doors** (Order Siding Report):
+**Full House — Roof + Siding** (Full House button — fills roof + siding + soffit in one pull):
+- 116 South Maple Street, Oak Harbor, OH 43449
+- 92 Winthrop St, Brooklyn, NY 11225
+- 10772 N Scott St, Alexandria, IN 46001
+
+**Walls, Windows & Doors** (Walls, Windows & Doors button):
 - 176 Anderson Ave, Plain City, OH 43064
 - 200 Northlind Dr, Defiance, MO 63341
 - 452 W Stansifer Ave, Clarksville, IN 47129
