@@ -540,6 +540,8 @@
         <input type="number" id="fasciaLF" placeholder="e.g. 200">
         <label>Soffit (SQ)</label>
         <input type="number" id="soffitSQ" placeholder="e.g. 2">
+        <label>Mounting Blocks <span style="font-weight:400;color:#8a97a8">(lights, spigots, vents, outlets)</span></label>
+        <input type="number" id="mountBlocks" placeholder="e.g. 4" value="4">
         <div class="sq-result" id="sidingSqResult" style="display:none">
           <div>
             <div class="sq-label">Calculated Siding Squares</div>
@@ -2543,6 +2545,8 @@ function autoQuoteSiding() {
   const fasciaLF = parseFloat(document.getElementById('fasciaLF').value) || 0;
   const soffitSQ = parseFloat(document.getElementById('soffitSQ').value) || 0;
   const gutterLF = parseFloat(document.getElementById('gutterLF').value) || 0;
+  const mountBlocksEl = document.getElementById('mountBlocks');
+  const mountBlocks = mountBlocksEl ? (parseInt(mountBlocksEl.value) || 0) : 0;
 
   const mainId = activeTemplate && activeTemplate.type === 'siding' ? activeTemplate.mainProductId : '590da916';
   addItemDirect(mainId, sidingSQ);
@@ -2550,7 +2554,7 @@ function autoQuoteSiding() {
   if (corners > 0) addItemDirect('sidcorn', corners);
   if (fasciaLF > 0) addItemDirect('facia', fasciaLF);
   if (soffitSQ > 0) addItemDirect('vinylsoffit', soffitSQ);
-  if (corners > 0) addItemDirect('mountblk', Math.max(2, corners));
+  if (mountBlocks > 0) addItemDirect('mountblk', mountBlocks);
   if (gutterLF > 0) {
     addItemDirect('gutter5', gutterLF);
     addItemDirect('gutterds', 1); // Gutter Down Spouts — qty can be adjusted
