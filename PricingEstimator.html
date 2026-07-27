@@ -1686,6 +1686,7 @@ function autoFillAlsideTier(tierKey) {
     fasciaLF:      { elId:'fasciaLF',      pid:dims.fasciaLF },
     soffitSQ:      { elId:'soffitSQ',      pid:dims.soffitSQ },
     gutterLF:      { elId:'gutterLF',      pid:dims.gutterLF },
+    mountBlocks:   { elId:'mountBlocks',   pid:dims.mountBlocks || 'mountblk', isInt:true },
   };
   Object.values(dimFields).forEach(({ elId, pid, isInt }) => {
     if (!pid) return;
