@@ -273,7 +273,9 @@ var TOKEN        = null;
 var SESSION_DATA = null;
 var REQUIRED     = [];   // [{key, label, type}]
 var FILLED       = {};   // {key: dataUrl}
-var ALSIDE_KEYS  = [];   // keys of Alside tier initials (mutually exclusive)
+var ALSIDE_KEYS   = [];  // keys of comparison tier initials (mutually exclusive: siding OR roof options)
+var ALSIDE_LABELS = {};  // key -> label, used to restore a tier placeholder when the choice is changed
+var ALSIDE_SELECTED = null; // { key, dataUrl } of the currently chosen option (null = none yet)
 
 var modalField   = null;
 var modalTab     = 'draw';
@@ -448,7 +450,7 @@ function enhanceIframe(iframe) {
         ? 'Select Option ' + (idx + 1)
         : 'Initials — T&C Page ' + (idx + 1);
       REQUIRED.push({key:key, label:label, type:'initials'});
-      if (isAlside) ALSIDE_KEYS.push(key);
+      if (isAlside) { ALSIDE_KEYS.push(key); ALSIDE_LABELS[key] = label; }
 
       var ph        = doc.createElement('span');
       ph.className  = 'rhe-ph';
@@ -505,6 +507,9 @@ function enhanceIframe(iframe) {
 // ─── Exposed to iframe ────────────────────────────────────────
 window.rheOpenModal = function(key, label) {
   openModal(key, label);
+};
+window.rheResetAlside = function() {
+  resetAlsideSelection();
 };
 
 // ─── Progress ─────────────────────────────────────────────────
@@ -585,40 +590,80 @@ g('sig-modal').addEventListener('click', function(e) {
 function applyModal() {
   var dataUrl = getModalDataUrl();
   if (!dataUrl || !modalField) return;
+
+  // Comparison option chosen → mutually exclusive: record this one, DISABLE the other options.
+  if (ALSIDE_KEYS.length > 1 && ALSIDE_KEYS.indexOf(modalField) !== -1) {
+    // Selection is tracked by a single sentinel key, not per-tier keys (keeps the progress count clean).
+    for (var ci = 0; ci < ALSIDE_KEYS.length; ci++) delete FILLED[ALSIDE_KEYS[ci]];
+    ALSIDE_SELECTED = { key: modalField, dataUrl: dataUrl };
+    FILLED['alside-selection'] = dataUrl;
+    renderAlsideGroup();
+    updateChip('alside-selection');
+    closeModal();
+    renderProgress();   // recomputes count + chips + submit-ready
+    return;
+  }
+
   FILLED[modalField] = dataUrl;
   injectIntoIframe(modalField, dataUrl);
   updateChip(modalField);
-
-  // Alside mutual exclusivity — if user initialed one tier, clear the others
-  if (ALSIDE_KEYS.length > 1 && ALSIDE_KEYS.indexOf(modalField) !== -1) {
-    var ifrDoc = g('doc-iframe').contentDocument;
-    for (var ai = 0; ai < ALSIDE_KEYS.length; ai++) {
-      var otherKey = ALSIDE_KEYS[ai];
-      if (otherKey !== modalField) {
-        delete FILLED[otherKey];
-        if (ifrDoc) {
-          var otherEl = ifrDoc.getElementById('rhe-' + otherKey);
-          if (otherEl) {
-            var nullSpan = ifrDoc.createElement('span');
-            nullSpan.className  = 'rhe-ph';
-            nullSpan.id         = 'rhe-' + otherKey;
-            nullSpan.style.opacity = '0.35';
-            nullSpan.textContent = '— Not selected —';
-            (function(k){ nullSpan.addEventListener('click', function(){ window.parent.rheOpenModal(k, 'Select Option'); }); })(otherKey);
-            otherEl.replaceWith(nullSpan);
-          }
-        }
-      }
-    }
-    // Mark the sentinel as fulfilled
-    FILLED['alside-selection'] = dataUrl;
-    updateChip('alside-selection');
-  }
-
-  var filled = Object.keys(FILLED).length;
-  g('prog-count').textContent = filled + ' / ' + REQUIRED.length;
+  g('prog-count').textContent = Object.keys(FILLED).length + ' / ' + REQUIRED.length;
   closeModal();
   checkSubmitReady();
+}
+
+// Render the comparison option group in the document iframe: the chosen option shows the
+// customer's initials (tap to change), the other options are disabled (greyed, not clickable).
+function renderAlsideGroup() {
+  var ifrDoc = g('doc-iframe').contentDocument;
+  if (!ifrDoc || !ALSIDE_SELECTED) return;
+  for (var i = 0; i < ALSIDE_KEYS.length; i++) {
+    var k  = ALSIDE_KEYS[i];
+    var el = ifrDoc.getElementById('rhe-' + k);
+    if (!el) continue;
+    if (k === ALSIDE_SELECTED.key) {
+      var img = ifrDoc.createElement('img');
+      img.src = ALSIDE_SELECTED.dataUrl;
+      img.className = 'rhe-img rhe-init-img';
+      img.id = 'rhe-' + k;
+      img.title = 'Tap to change your selection';
+      img.style.cursor = 'pointer';
+      img.addEventListener('click', function(){ window.parent.rheResetAlside(); });
+      el.replaceWith(img);
+    } else {
+      var span = ifrDoc.createElement('span');
+      span.className = 'rhe-ph';
+      span.id = 'rhe-' + k;
+      span.style.opacity = '0.4';
+      span.style.cursor = 'not-allowed';
+      span.style.textDecoration = 'line-through';
+      span.style.pointerEvents = 'none';   // truly disabled — cannot be initialed while another is chosen
+      span.textContent = '🔒 Not selected';
+      el.replaceWith(span);
+    }
+  }
+}
+
+// Clear the comparison choice and re-enable all options (so the customer can change their mind).
+function resetAlsideSelection() {
+  var ifrDoc = g('doc-iframe').contentDocument;
+  ALSIDE_SELECTED = null;
+  delete FILLED['alside-selection'];
+  for (var i = 0; i < ALSIDE_KEYS.length; i++) {
+    (function(k){
+      delete FILLED[k];
+      if (!ifrDoc) return;
+      var el = ifrDoc.getElementById('rhe-' + k);
+      if (!el) return;
+      var ph = ifrDoc.createElement('span');
+      ph.className = 'rhe-ph';
+      ph.id = 'rhe-' + k;
+      ph.textContent = '✏ Initial to select this option';
+      ph.addEventListener('click', function(){ window.parent.rheOpenModal(k, ALSIDE_LABELS[k] || 'Select Option'); });
+      el.replaceWith(ph);
+    })(ALSIDE_KEYS[i]);
+  }
+  renderProgress();
 }
 
 function getModalDataUrl() {
@@ -678,10 +723,21 @@ function applyAll() {
   var fullUrl = getQuickDataUrl();
   if (!fullUrl) return;
   for (var i=0; i<REQUIRED.length; i++) {
-    var key=REQUIRED[i].key; FILLED[key]=fullUrl;
+    var key=REQUIRED[i].key;
+    // Never auto-fill the comparison option choice — the customer must pick one option deliberately.
+    if (key === 'alside-selection') continue;
+    FILLED[key]=fullUrl;
     injectIntoIframe(key, fullUrl); updateChip(key);
   }
   g('prog-count').textContent = Object.keys(FILLED).length + ' / ' + REQUIRED.length;
+  if (ALSIDE_KEYS.length > 1 && !ALSIDE_SELECTED) {
+    // Nudge the customer to choose an option in the document.
+    var iframe = document.querySelector('iframe');
+    if (iframe && iframe.contentDocument) {
+      var ph = iframe.contentDocument.querySelector('.rhe-ph[id^="rhe-initials-"]');
+      if (ph) ph.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  }
   checkSubmitReady();
 }
 function getQuickDataUrl() {
