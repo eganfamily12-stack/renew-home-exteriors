@@ -4560,19 +4560,29 @@ function clearQuote() {
 /* ─── Send for signature modal ───────────────────────────── */
 function openSendModal() {
   const modal = document.getElementById('sendModal');
-  if (modal) modal.style.display = 'flex';
+  if (!modal) return;
+  // Pre-fill the modal from the customer info already entered on the quote.
+  const custName  = (document.getElementById('custName')?.value  || '').trim();
+  const custEmail = (document.getElementById('custEmail')?.value || '').trim();
+  const nEl = document.getElementById('sendModal_name');
+  const eEl = document.getElementById('sendModal_email');
+  if (nEl && !nEl.value.trim()) nEl.value = custName;
+  if (eEl && !eEl.value.trim()) eEl.value = custEmail;
+  const tEl = document.getElementById('sendModal_type');
+  if (tEl) tEl.textContent = (activeTemplate && (activeTemplate.label || activeTemplate.name)) || 'Estimate / Contract';
+  modal.style.display = 'flex';
 }
 function closeSendModal() {
   const modal = document.getElementById('sendModal');
   if (modal) modal.style.display = 'none';
 }
 async function sendForSignature() {
-  const emailEl = document.getElementById('sigEmail');
-  const phoneEl = document.getElementById('sigPhone');
-  const email = emailEl ? emailEl.value.trim() : '';
-  const phone = phoneEl ? phoneEl.value.trim() : '';
+  // Email comes from the modal (falls back to the customer-info field); phone comes from the
+  // customer-info field since the send modal has no phone input.
+  const email = (document.getElementById('sendModal_email')?.value || document.getElementById('custEmail')?.value || '').trim();
+  const phone = (document.getElementById('custPhone')?.value || '').trim();
   if (!email && !phone) {
-    alert('Please enter an email address or phone number.');
+    alert('Please enter a customer email or phone number (in Customer Information or the field above) before sending.');
     return;
   }
   closeSendModal();
