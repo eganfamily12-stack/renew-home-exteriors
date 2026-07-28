@@ -3321,7 +3321,9 @@ async function savePhotoNotes() {
 }
 
 async function startOnsiteSigning() {
-  if (!quoteItems.length) { alert('Please add items to the quote first.'); return; }
+  const isCompareSend = isAlsideComparison && alsideTiers && activeTemplate && activeTemplate.tiers
+    && Object.values(alsideTiers).some(a => a && a.length);
+  if (!quoteItems.length && !isCompareSend) { alert('Please add items to the quote first.'); return; }
 
   const name  = (document.getElementById('custName').value  || '').trim();
   const email = (document.getElementById('custEmail') ? document.getElementById('custEmail').value.trim() : '');
@@ -3354,10 +3356,26 @@ async function startOnsiteSigning() {
     const grand = getGrandTotal();
     const qnum  = document.getElementById('quoteNum').value  || '';
     const qdate = document.getElementById('quoteDate').value || '';
+
+    // For a comparison, there is no single total — capture each option's total and
+    // headline the first one so the signing record isn't $0.
+    let sumType, sumTotal = grand, sumOptions = null;
+    if (isCompareSend) {
+      const opts = (activeTemplate.tiers || [])
+        .filter(t => (alsideTiers[t.key] || []).length)
+        .map(t => ({ option: t.name, total: getTierTotal(t.key) }));
+      sumOptions = opts;
+      sumTotal   = opts.length ? opts[0].total : 0;
+      sumType    = activeTemplate.label || activeTemplate.name || 'Comparison';
+    } else {
+      sumType = activeTemplate ? (activeTemplate.label || activeTemplate.name)
+                               : (projectType === 'roof' ? 'Roofing Estimate' : 'Siding Quote');
+    }
     const summary = {
-      type:        projectType === 'roofing' ? 'Roofing Estimate' : 'Siding Quote',
+      type:        sumType,
       template:    activeTemplate ? activeTemplate.name : '',
-      total:       grand,
+      total:       sumTotal,
+      options:     sumOptions,
       project_num: qnum,
       date:        qdate,
     };
@@ -3857,7 +3875,8 @@ async function _doGenerateContract() {
 // FULL PDF PACKAGE  (print-ready multi-page document)
 // ============================================================
 function buildFullPDFHtml() {
-  if (!quoteItems.length) { alert('Please add items to the quote first.'); return null; }
+  const _isCompare = isAlsideComparison && alsideTiers && activeTemplate && activeTemplate.tiers && Object.values(alsideTiers).some(a => a && a.length);
+  if (!quoteItems.length && !_isCompare) { alert('Please add items to the quote first.'); return null; }
 
   /* ── Gather data ── */
   const custName  = document.getElementById('custName').value  || '_______________';
@@ -3872,7 +3891,7 @@ function buildFullPDFHtml() {
   const down      = parseFloat(document.getElementById('moneyDown').value) || 0;
   const useFinancing = document.getElementById('useFinancing').checked;
 
-  const isRoofing = projectType === 'roofing';
+  const isRoofing = projectType === 'roof';   // state value is 'roof', not 'roofing' — this drives the title, T&C, and "what to expect" pages
   const isSiding  = projectType === 'siding';
   const grand     = getGrandTotal();
   const financed  = Math.max(0, grand - down);
@@ -3897,7 +3916,7 @@ function buildFullPDFHtml() {
   });
   const colors      = typeof getColorSummary === 'function' ? getColorSummary() : [];
   const fullAddr    = [custAddr, custCity, custZip].filter(Boolean).join(', ');
-  const docTitle    = isRoofing ? 'ROOFING ESTIMATE' : 'SIDING QUOTE';
+  const docTitle    = _isCompare ? (isRoofing ? 'ROOFING ESTIMATE — OPTIONS' : 'SIDING QUOTE — OPTIONS') : (isRoofing ? 'ROOFING ESTIMATE' : 'SIDING QUOTE');
   const tplName     = tpl ? tpl.name.toUpperCase() : (isRoofing ? 'ROOFING' : 'SIDING');
   const tplTimeline = tpl && tpl.timeline ? tpl.timeline : (isRoofing ? '6–8 weeks' : '10–16 weeks');
 
@@ -4156,7 +4175,7 @@ function buildFullPDFHtml() {
     <h2 class="sec-title">AUTHORIZATION PAGE</h2>
     <div class="auth-top">
       <div class="auth-product">${tplName}</div>
-      <div class="auth-price">${fmt$(grand)}</div>
+      <div class="auth-price">${_isCompare ? 'Per selected option' : fmt$(grand)}</div>
       <div class="auth-info">
         <div><strong>Project #:</strong> ${h(qnum)}</div>
         <div><strong>Name:</strong> ${h(custName)}</div>
