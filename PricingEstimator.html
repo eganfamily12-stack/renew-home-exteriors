@@ -422,6 +422,7 @@
       <input type="text" id="custName" placeholder="Full name">
       <label>Address</label>
       <input type="text" id="custAddr" placeholder="Street address" onchange="evAutoCheck()">
+      <div id="ev-addr-current" style="display:none;font-size:11px;color:#1a6bc4;margin:3px 0 0"></div>
       <div class="dim-grid">
         <div class="dim-field"><label>City</label><input type="text" id="custCity" placeholder="City" onchange="evAutoCheck()"></div>
         <div class="dim-field"><label>State</label><input type="text" id="custState" placeholder="OH" onchange="evAutoCheck()"></div>
@@ -996,29 +997,58 @@ const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const GOOGLE_MAPS_KEY = 'AIzaSyCt4XlZWWWzwWupPhVy0Vqiap83rf9plns';  // <-- paste your restricted Places/Maps-JS browser key here
 function loadGoogleAutocomplete() {
   if (!GOOGLE_MAPS_KEY || GOOGLE_MAPS_KEY.indexOf('YOUR_') === 0) return; // not configured yet
-  if (window.google && google.maps && google.maps.places) { initGoogleAutocomplete(); return; }
+  if (window.google && google.maps && google.maps.importLibrary) { initGoogleAutocomplete(); return; }
   if (document.getElementById('gmaps-js')) return;
   const s = document.createElement('script');
   s.id = 'gmaps-js'; s.async = true;
-  s.src = 'https://maps.googleapis.com/maps/api/js?key=' + GOOGLE_MAPS_KEY + '&libraries=places&callback=initGoogleAutocomplete';
+  s.src = 'https://maps.googleapis.com/maps/api/js?key=' + GOOGLE_MAPS_KEY + '&loading=async&libraries=places&callback=initGoogleAutocomplete';
   document.head.appendChild(s);
 }
-function initGoogleAutocomplete() {
-  const el = document.getElementById('custAddr');
-  if (!el || !window.google || !google.maps || !google.maps.places) return;
-  const ac = new google.maps.places.Autocomplete(el, { types: ['address'], componentRestrictions: { country: 'us' }, fields: ['address_components'] });
-  ac.addListener('place_changed', function () {
-    const place = ac.getPlace();
-    if (!place || !place.address_components) return;
-    const get = (type, useShort) => { const c = place.address_components.find(x => x.types.indexOf(type) >= 0); return c ? (useShort ? c.short_name : c.long_name) : ''; };
+// Shows the current/saved street beside the Google widget (whose own box starts empty on load).
+function updateAddrCurrent() {
+  const el = document.getElementById('ev-addr-current');
+  const input = document.getElementById('custAddr');
+  if (!el || !input) return;
+  const v = (input.value || '').trim();
+  if (input.style.display === 'none' && v) { el.style.display = 'block'; el.textContent = '📍 ' + v; }
+  else { el.style.display = 'none'; }
+}
+// New Places API (New): PlaceAutocompleteElement (legacy Autocomplete isn't available to new projects).
+async function initGoogleAutocomplete() {
+  const input = document.getElementById('custAddr');
+  if (!input || input.dataset.gmpDone) return;
+  let places;
+  try { places = await google.maps.importLibrary('places'); } catch (e) { return; }
+  const PAE = places && places.PlaceAutocompleteElement;
+  if (!PAE) return;
+  let pac;
+  try { pac = new PAE({ includedRegionCodes: ['us'] }); } catch (e) { return; }
+  input.dataset.gmpDone = '1';
+  pac.style.width = '100%';
+  input.style.display = 'none';                 // the widget replaces the plain input
+  input.parentNode.insertBefore(pac, input);
+  updateAddrCurrent();
+  const fill = async (place) => {
+    if (!place) return;
+    try { await place.fetchFields({ fields: ['addressComponents', 'formattedAddress'] }); } catch (e) {}
+    const comps = place.addressComponents || [];
+    const get = (type, short) => { const c = comps.find(x => (x.types || []).indexOf(type) >= 0); return c ? (short ? (c.shortText || c.short_name || '') : (c.longText || c.long_name || '')) : ''; };
     const street = [get('street_number'), get('route')].filter(Boolean).join(' ');
     const setV = (id, v) => { const e = document.getElementById(id); if (e && v) e.value = v; };
-    if (street) el.value = street;
+    input.value = street || place.formattedAddress || '';
     setV('custCity', get('locality') || get('sublocality') || get('postal_town'));
     setV('custState', get('administrative_area_level_1', true));
     setV('custZip', get('postal_code'));
+    updateAddrCurrent();
     if (typeof evAutoCheck === 'function') evAutoCheck();
+  };
+  pac.addEventListener('gmp-select', async (ev) => {
+    try {
+      if (ev.placePrediction && ev.placePrediction.toPlace) { await fill(ev.placePrediction.toPlace()); }
+      else if (ev.place) { await fill(ev.place); }
+    } catch (e) {}
   });
+  pac.addEventListener('gmp-placeselect', async (ev) => { try { if (ev.place) await fill(ev.place); } catch (e) {} });
 }
 window.addEventListener('load', loadGoogleAutocomplete);
 
@@ -1979,6 +2009,7 @@ async function loadQuoteById(id) {
   setVal('custAddr',  addrParts[0] || '');
   setVal('custCity',  addrParts[1] || '');
   setVal('custZip',   addrParts[2] || '');
+  if (typeof updateAddrCurrent === 'function') updateAddrCurrent();
   setVal('custPhone', q.customer_phone);
   setVal('custEmail', q.customer_email);
   setVal('quoteNum',  q.quote_number);
