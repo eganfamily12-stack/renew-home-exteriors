@@ -421,12 +421,13 @@
       <label>Customer Name</label>
       <input type="text" id="custName" placeholder="Full name">
       <label>Address</label>
-      <input type="text" id="custAddr" placeholder="Street address">
+      <input type="text" id="custAddr" placeholder="Street address" onchange="evAutoCheck()">
       <div class="dim-grid">
-        <div class="dim-field"><label>City</label><input type="text" id="custCity" placeholder="City"></div>
-        <div class="dim-field"><label>State</label><input type="text" id="custState" placeholder="OH"></div>
-        <div class="dim-field"><label>Zip</label><input type="text" id="custZip" placeholder="00000"></div>
+        <div class="dim-field"><label>City</label><input type="text" id="custCity" placeholder="City" onchange="evAutoCheck()"></div>
+        <div class="dim-field"><label>State</label><input type="text" id="custState" placeholder="OH" onchange="evAutoCheck()"></div>
+        <div class="dim-field"><label>Zip</label><input type="text" id="custZip" placeholder="00000" onchange="evAutoCheck()"></div>
       </div>
+      <div id="ev-address-banner" style="display:none;margin:8px 0 0;padding:8px 10px;border:1px solid #8ec89a;border-radius:6px;font-size:12px;line-height:1.5"></div>
       <button onclick="fetchSatellite()" style="width:100%;margin:6px 0 2px;padding:8px;background:#1a3a5c;color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer">📸 Get Property Photo</button>
       <div id="sat-preview" style="display:none;margin:8px 0">
         <div style="display:flex;gap:4px;margin-bottom:4px">
@@ -460,7 +461,10 @@
 
       <!-- EAGLEVIEW MEASUREMENT ORDERS -->
       <div id="ev-panel" style="border:1px solid #d5dae5;border-radius:8px;padding:10px;margin:8px 0;background:#f6f9fc">
-        <div style="font-weight:800;font-size:12px;color:#1a3a5c;margin-bottom:6px">📐 EagleView Reports <span style="font-weight:500;color:#8a97a8">(precise measurements — applies to this property)</span></div>
+        <div style="font-weight:800;font-size:12px;color:#1a3a5c;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+          <span>📐 EagleView Reports <span style="font-weight:500;color:#8a97a8">(applies to this property)</span></span>
+          <a href="eagleview.html" target="_blank" style="font-weight:700;font-size:11px;color:#1a6bc4;text-decoration:none">📥 All Reports ↗</a>
+        </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button type="button" onclick="orderEagleView('full')" style="flex:1;min-width:140px;padding:8px;border:1px solid #1a6bc4;background:#fff;color:#1a3a5c;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">🏠🧱 Full House (Roof + Siding)</button>
           <button type="button" onclick="orderEagleView('wallsdoors')" style="flex:1;min-width:140px;padding:8px;border:1px solid #1a6bc4;background:#fff;color:#1a3a5c;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">🪟 Walls, Windows &amp; Doors</button>
@@ -988,6 +992,36 @@ const GOOGLE_MAPS_KEY = 'AIzaSyApa7T3QB-fcMlLoG0tE4jhYVaJKuoYow4'; // ← paste 
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcG9mZ3JseWhuZ2V3c3B6YXNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExODMzNjQsImV4cCI6MjA5Njc1OTM2NH0.vNpEjBGP6Wy4cwcK-ViY2-HpP7KEofNDyj_CxEsMR3U';
 const SIGNING_SITE_URL = 'https://comforting-truffle-faff94.netlify.app'; // static signing page host
 const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── Google Places address autocomplete (browser key, referrer-restricted to your domain) ──
+const GOOGLE_MAPS_KEY = 'AIzaSyCt4XlZWWWzwWupPhVy0Vqiap83rf9plns';  // <-- paste your restricted Places/Maps-JS browser key here
+function loadGoogleAutocomplete() {
+  if (!GOOGLE_MAPS_KEY || GOOGLE_MAPS_KEY.indexOf('YOUR_') === 0) return; // not configured yet
+  if (window.google && google.maps && google.maps.places) { initGoogleAutocomplete(); return; }
+  if (document.getElementById('gmaps-js')) return;
+  const s = document.createElement('script');
+  s.id = 'gmaps-js'; s.async = true;
+  s.src = 'https://maps.googleapis.com/maps/api/js?key=' + GOOGLE_MAPS_KEY + '&libraries=places&callback=initGoogleAutocomplete';
+  document.head.appendChild(s);
+}
+function initGoogleAutocomplete() {
+  const el = document.getElementById('custAddr');
+  if (!el || !window.google || !google.maps || !google.maps.places) return;
+  const ac = new google.maps.places.Autocomplete(el, { types: ['address'], componentRestrictions: { country: 'us' }, fields: ['address_components'] });
+  ac.addListener('place_changed', function () {
+    const place = ac.getPlace();
+    if (!place || !place.address_components) return;
+    const get = (type, useShort) => { const c = place.address_components.find(x => x.types.indexOf(type) >= 0); return c ? (useShort ? c.short_name : c.long_name) : ''; };
+    const street = [get('street_number'), get('route')].filter(Boolean).join(' ');
+    const setV = (id, v) => { const e = document.getElementById(id); if (e && v) e.value = v; };
+    if (street) el.value = street;
+    setV('custCity', get('locality') || get('sublocality') || get('postal_town'));
+    setV('custState', get('administrative_area_level_1', true));
+    setV('custZip', get('postal_code'));
+    if (typeof evAutoCheck === 'function') evAutoCheck();
+  });
+}
+window.addEventListener('load', loadGoogleAutocomplete);
 
 // ============================================================
 // PRODUCT DATA (hardcoded fallback — overridden by Supabase on load)
@@ -2337,6 +2371,23 @@ function evStatus(html, color) {
   const st = document.getElementById('ev-panel-status');
   st.style.display = 'block'; st.style.color = color || '#334'; st.innerHTML = html;
 }
+// Find stored reports for an address, tolerant of street-name formatting:
+// match on street number + zip, so "116 S Maple St" and "116 South Maple Street" both connect.
+async function evFindReports(a) {
+  try {
+    const { data: { session } } = await _supa.auth.getSession();
+    if (!session) return [];
+    const zip = (a.Zip || '').trim();
+    const num = (((a.Address || '').match(/^\s*(\d+)/)) || [])[1];
+    const qs = zip ? ('zip=eq.' + encodeURIComponent(zip)) : ('address_key=eq.' + encodeURIComponent(evAddrKey(a)));
+    const r = await fetch(SUPABASE_URL + '/rest/v1/eagleview_reports?select=*&' + qs + '&order=ordered_at.desc', { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token } });
+    let rows = await r.json();
+    if (!Array.isArray(rows)) return [];
+    if (num) rows = rows.filter(x => ((((x.address || '').match(/^\s*(\d+)/)) || [])[1]) === num);
+    return rows;
+  } catch (e) { return []; }
+}
+
 async function evCall(payload) {
   const { data: { session } } = await _supa.auth.getSession();
   if (!session) throw new Error('Session expired — please sign in again.');
@@ -2346,6 +2397,39 @@ async function evCall(payload) {
     body: JSON.stringify(payload)
   }).then(r => r.json());
 }
+
+// Auto-detect a returned EagleView report for the address the rep entered → one-click Apply banner.
+let _evAutoTimer = null;
+function evAutoCheck() { clearTimeout(_evAutoTimer); _evAutoTimer = setTimeout(evAutoCheckRun, 400); }
+async function evAutoCheckRun() {
+  const banner = document.getElementById('ev-address-banner');
+  if (!banner) return;
+  const a = evAddress();
+  if (!a.Address || !a.City || !a.State || !a.Zip) { banner.style.display = 'none'; return; }
+  try {
+    const rows = await evFindReports(a);
+    if (!rows.length) { banner.style.display = 'none'; return; }
+    window._evById = window._evById || {}; rows.forEach(x => window._evById[x.id] = x);
+    const labels = { full: 'Full House', wallsdoors: 'Walls, Windows & Doors', roof: 'Roof', siding: 'Siding' };
+    const complete = rows.filter(x => x.status === 'complete' && x.measurements && x.measurements.summary);
+    if (complete.length) {
+      const rec = complete.sort((x, y) => ((y.report_type === 'full') - (x.report_type === 'full')) || (new Date(y.delivered_at || 0) - new Date(x.delivered_at || 0)))[0];
+      banner.style.display = 'block'; banner.style.background = '#eaf5ea'; banner.style.borderColor = '#8ec89a'; banner.style.color = '#1a5a1e';
+      banner.innerHTML = '✅ EagleView <strong>' + (labels[rec.report_type] || rec.report_type) + '</strong> report ready for this address — <a href="#" onclick="applyEV(\'' + rec.id + '\');return false" style="color:#1a6bc4;font-weight:800">Apply measurements</a>';
+    } else {
+      const pend = rows[0];
+      banner.style.display = 'block'; banner.style.background = '#fff7e6'; banner.style.borderColor = '#f0c66b'; banner.style.color = '#8a6d1a';
+      banner.innerHTML = '⏳ EagleView ' + (labels[pend.report_type] || pend.report_type) + ' report <strong>' + pend.status + '</strong> for this address — <a href="#" onclick="refreshEV(\'' + (pend.ev_report_id || '') + '\');return false" style="color:#1a6bc4;font-weight:700">check now</a>';
+    }
+  } catch (e) { /* silent */ }
+}
+// On load: prefill address from ?evaddr=... (dashboard "Open in Estimator") and auto-check once signed in.
+window.addEventListener('load', async function () {
+  const p = new URLSearchParams(location.search);
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+  if (p.get('evaddr')) { set('custAddr', p.get('evaddr')); set('custCity', p.get('evcity')); set('custState', p.get('evstate')); set('custZip', p.get('evzip')); }
+  for (let i = 0; i < 12; i++) { try { const { data: { session } } = await _supa.auth.getSession(); if (session) { evAutoCheck(); break; } } catch (e) {} await new Promise(r => setTimeout(r, 500)); }
+});
 
 async function orderEagleView(type) {
   const a = evAddress();
@@ -2372,15 +2456,10 @@ async function orderEagleView(type) {
 
 async function checkEagleView() {
   const a = evAddress();
-  const key = evAddrKey(a);
   try {
     evStatus('⏳ Checking for EagleView measurements…');
-    const { data: { session } } = await _supa.auth.getSession();
-    const r = await fetch(SUPABASE_URL + '/rest/v1/eagleview_reports?select=*&address_key=eq.' + encodeURIComponent(key) + '&order=ordered_at.desc', {
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token }
-    });
-    const rows = await r.json();
-    if (!Array.isArray(rows) || !rows.length) { evStatus('No EagleView reports found for this address yet. Order one above.', '#777'); return; }
+    const rows = await evFindReports(a);
+    if (!rows.length) { evStatus('No EagleView reports found for this address yet. Order one above.', '#777'); return; }
     window._evById = {}; rows.forEach(x => window._evById[x.id] = x);
     const typeLabels = { full: 'Full House (Roof + Siding)', wallsdoors: 'Walls, Windows & Doors', roof: 'Roof', siding: 'Siding' };
     // Best record per report type: prefer complete, then newest.
@@ -2403,7 +2482,7 @@ async function checkEagleView() {
 }
 
 async function refreshEV(evId) {
-  try { evStatus('⏳ Checking EagleView for this report…'); await evCall({ action: 'refresh', reportId: evId }); await checkEagleView(); }
+  try { evStatus('⏳ Checking EagleView for this report…'); await evCall({ action: 'refresh', reportId: evId }); await checkEagleView(); evAutoCheck(); }
   catch (e) { evStatus('⚠️ ' + (e.message || e), '#b00'); }
 }
 
