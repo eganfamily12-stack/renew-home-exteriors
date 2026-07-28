@@ -3320,24 +3320,30 @@ async function savePhotoNotes() {
   await Promise.allSettled(updates);
 }
 
-async function startOnsiteSigning() {
+async function startOnsiteSigning(options) {
+  options = options || {};
+  const emailMode     = !!options.emailMode;                 // true = email the customer a link; false = on-site signing (redirect)
+  const overrideEmail = (options.overrideEmail || '').trim();
+
   const isCompareSend = isAlsideComparison && alsideTiers && activeTemplate && activeTemplate.tiers
     && Object.values(alsideTiers).some(a => a && a.length);
   if (!quoteItems.length && !isCompareSend) { alert('Please add items to the quote first.'); return; }
 
   const name  = (document.getElementById('custName').value  || '').trim();
-  const email = (document.getElementById('custEmail') ? document.getElementById('custEmail').value.trim() : '');
+  const email = (overrideEmail || (document.getElementById('custEmail') ? document.getElementById('custEmail').value.trim() : '')).trim();
 
   if (!name)  { alert('Please enter the customer name before generating the contract.'); return; }
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    alert('Please enter a valid customer email address before generating the contract.');
+    alert('Please enter a valid customer email address before ' + (emailMode ? 'sending for signature.' : 'generating the contract.'));
     return;
   }
 
-  // Show a simple loading indicator
-  const btn = document.querySelector('button[onclick="generateContract()"]');
+  // Show a loading indicator on whichever button triggered this.
+  const btn = emailMode
+    ? document.getElementById('sendModal_btn')
+    : document.querySelector('button[onclick="generateContract()"]');
   const origText = btn ? btn.textContent : '';
-  if (btn) { btn.textContent = '⏳ Creating signing session…'; btn.disabled = true; }
+  if (btn) { btn.textContent = emailMode ? '⏳ Sending…' : '⏳ Creating signing session…'; btn.disabled = true; }
 
   try {
     // 1. Ensure quote is saved
@@ -3380,7 +3386,8 @@ async function startOnsiteSigning() {
       date:        qdate,
     };
 
-    // 4. POST to edge function with skip_email: true
+    // 4. POST to edge function. Email mode → the function emails the customer + company;
+    //    on-site mode → skip_email so we can redirect the rep straight to the signing page.
     const res = await fetch(SIGNING_FN_URL, {
       method: 'POST',
       headers: {
@@ -3394,20 +3401,45 @@ async function startOnsiteSigning() {
         customer_email:   email,
         document_html:    docHtml,
         document_summary: summary,
-        skip_email:       true,
+        skip_email:       !emailMode,
       }),
     });
 
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Unknown error');
 
-    // 5. Redirect to signing site — skip the Supabase redirect hop
     const signingToken = new URL(data.signing_url).searchParams.get('token');
+
+    // 5a. Email mode: don't redirect — report the result in the send modal.
+    if (emailMode) {
+      if (btn) { btn.textContent = origText; btn.disabled = false; }
+      const st = document.getElementById('sendModal_status');
+      if (st) {
+        st.style.display = 'block';
+        if (data.emails_sent) {
+          st.style.background = '#e4f5e6'; st.style.color = '#1a7a2e';
+          st.innerHTML = '✅ Signing link emailed to <strong>' + escHtmlPE(email) + '</strong> and RHEOhio@gmail.com. This window can be closed.';
+        } else {
+          // Session created but the email service didn't send — give the rep the link to share manually.
+          const link = SIGNING_SITE_URL + '?token=' + signingToken;
+          st.style.background = '#fff8e1'; st.style.color = '#5a4000';
+          st.innerHTML = '⚠️ Session created, but the email could not be sent. Copy this link to the customer:<br><a href="' + link + '" target="_blank" style="color:#1565c0;word-break:break-all">' + escHtmlPE(link) + '</a>';
+        }
+      }
+      return;
+    }
+
+    // 5b. On-site mode: redirect the rep to the signing site.
     window.location.href = SIGNING_SITE_URL + '?token=' + signingToken;
 
   } catch (err) {
     console.error('[startOnsiteSigning]', err);
-    alert('❌ Failed to create signing session: ' + err.message);
+    if (emailMode) {
+      const st = document.getElementById('sendModal_status');
+      if (st) { st.style.display = 'block'; st.style.background = '#fbe4e4'; st.style.color = '#b02020'; st.textContent = '❌ Failed to send: ' + err.message; }
+    } else {
+      alert('❌ Failed to create signing session: ' + err.message);
+    }
     if (btn) { btn.textContent = origText; btn.disabled = false; }
   }
 }
@@ -4596,20 +4628,19 @@ function closeSendModal() {
   if (modal) modal.style.display = 'none';
 }
 async function sendForSignature() {
-  // Email comes from the modal (falls back to the customer-info field); phone comes from the
-  // customer-info field since the send modal has no phone input.
+  // Emailing a signing link requires a valid email (falls back to the customer-info field).
   const email = (document.getElementById('sendModal_email')?.value || document.getElementById('custEmail')?.value || '').trim();
-  const phone = (document.getElementById('custPhone')?.value || '').trim();
-  if (!email && !phone) {
-    alert('Please enter a customer email or phone number (in Customer Information or the field above) before sending.');
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const st = document.getElementById('sendModal_status');
+    if (st) { st.style.display = 'block'; st.style.background = '#fbe4e4'; st.style.color = '#b02020'; st.textContent = 'Please enter a valid customer email address to send the signing link.'; }
+    else alert('Please enter a valid customer email address to send the signing link.');
     return;
   }
-  closeSendModal();
-  try {
-    await confirmGenerateContract(email, phone);
-  } catch(e) {
-    alert('Failed to send for signature: ' + e.message);
-  }
+  // Keep custEmail in sync so the saved quote + document carry the same address.
+  const custEmailEl = document.getElementById('custEmail');
+  if (custEmailEl && !custEmailEl.value.trim()) custEmailEl.value = email;
+  // Email the customer a signing link (skip_email=false). The modal stays open to show the result.
+  await startOnsiteSigning({ emailMode: true, overrideEmail: email });
 }
 
 /* ─── Change Order panel helpers ─────────────────────────── */
