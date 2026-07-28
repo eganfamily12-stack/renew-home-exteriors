@@ -486,8 +486,18 @@
         <div class="dim-grid">
           <div class="dim-field"><label>Total Sq Ft of Roof</label><input type="number" id="roofSqft" placeholder="e.g. 2400" oninput="calcRoofSQ()"></div>
           <div class="dim-field">
-            <label>Stories</label>
-            <select id="roofStories" onchange="calcRoofSQ()">
+            <label>Waste Factor</label>
+            <select id="roofWaste" onchange="calcRoofSQ()">
+              <option value="1.10">10% (EagleView suggested)</option>
+              <option value="1.12">12%</option>
+              <option value="1.15">15%</option>
+              <option value="1.18" selected>18% Standard</option>
+              <option value="1.20">20%</option>
+            </select>
+          </div>
+          <div class="dim-field">
+            <label>Stories <span style="font-weight:400;color:#90a0b3">(labor only)</span></label>
+            <select id="roofStories">
               <option value="1">1 Story</option>
               <option value="1.15">1.5 Story</option>
               <option value="1.3">2 Story</option>
@@ -515,14 +525,16 @@
         </div>
         <label>Ridge / Hip Length (LF)</label>
         <input type="number" id="ridgeLF" placeholder="e.g. 80">
-        <label>Eave / Drip Edge Length (LF)</label>
-        <input type="number" id="eaveLF" placeholder="e.g. 160">
+        <label>Eave Length (LF) <span style="font-weight:400;color:#90a0b3">— drip edge + starter</span></label>
+        <input type="number" id="eaveLF" placeholder="e.g. 88" oninput="deriveIceWater()">
+        <label>Rake Length (LF) <span style="font-weight:400;color:#90a0b3">— adds to drip edge</span></label>
+        <input type="number" id="rakeLF" placeholder="e.g. 153">
         <label>Gutter Length (LF)</label>
         <input type="number" id="gutterLF" placeholder="e.g. 120">
-        <label>Valley / Step Flashing (LF)</label>
-        <input type="number" id="valleyLF" placeholder="e.g. 40">
-        <label>Ice &amp; Water Shield (LF)</label>
-        <input type="number" id="iceWaterLF" placeholder="e.g. 60">
+        <label>Valley + Step Flashing (LF)</label>
+        <input type="number" id="valleyLF" placeholder="e.g. 63">
+        <label>Ice &amp; Water Shield (LF) <span style="font-weight:400;color:#90a0b3">— auto: eaves × 2</span></label>
+        <input type="number" id="iceWaterLF" placeholder="auto-fills from eaves" oninput="this.dataset.auto=''">
       </div>
 
       <!-- SIDING DIMS -->
@@ -643,53 +655,9 @@
     <!-- Alside Comparison Section (hidden unless comparison template active) -->
     <div id="alsideSection" style="display:none">
       <div class="card" style="border:2px solid #1a3a5c">
-        <h3 style="color:#1a3a5c">📊 Alside Siding — 3-Option Comparison</h3>
-        <p style="font-size:12px;color:#6b7a90;margin:0 0 14px">Each option builds its own complete line-item estimate. Click <strong>Auto-Fill</strong> on each tier to populate from your siding measurements, then adjust as needed.</p>
-        <!-- TIER 1: House Wrap -->
-        <div style="border:1px solid #b0c4de;border-radius:8px;margin-bottom:16px;overflow:hidden">
-          <div style="background:#1a3a5c;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
-            <span style="font-weight:700;font-size:13px">Option 1 — House Wrap (.044)</span>
-            <button onclick="autoFillAlsideTier('housewrap')" style="background:#e8500a;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer">⚡ Auto-Fill</button>
-          </div>
-          <table style="width:100%;border-collapse:collapse">
-            <thead><tr style="background:#f4f7fb"><th style="padding:6px 8px;font-size:11px;text-align:left;font-weight:700;color:#1a3a5c">Product</th><th style="padding:6px 8px;font-size:11px;text-align:center;font-weight:700;color:#1a3a5c">Qty</th><th style="padding:6px 8px;font-size:11px;text-align:right;font-weight:700;color:#1a3a5c">Total</th><th style="width:28px"></th></tr></thead>
-            <tbody id="alsideTierBody_housewrap"></tbody>
-          </table>
-          <div style="padding:8px 12px;background:#f8fafd;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e0e8f0">
-            <span id="alsideTierFin_housewrap" style="font-size:11px;color:#d4860a"></span>
-            <span style="font-size:13px;font-weight:800;color:#1a3a5c">Total: <span id="alsideTierTotal_housewrap">$0.00</span></span>
-          </div>
-        </div>
-        <!-- TIER 2: Polar Board -->
-        <div style="border:1px solid #b0c4de;border-radius:8px;margin-bottom:16px;overflow:hidden">
-          <div style="background:#234f7a;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
-            <span style="font-weight:700;font-size:13px">Option 2 — Polar Board (.044 + 3/8&quot;)</span>
-            <button onclick="autoFillAlsideTier('polarboard')" style="background:#e8500a;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer">⚡ Auto-Fill</button>
-          </div>
-          <table style="width:100%;border-collapse:collapse">
-            <thead><tr style="background:#f4f7fb"><th style="padding:6px 8px;font-size:11px;text-align:left;font-weight:700;color:#1a3a5c">Product</th><th style="padding:6px 8px;font-size:11px;text-align:center;font-weight:700;color:#1a3a5c">Qty</th><th style="padding:6px 8px;font-size:11px;text-align:right;font-weight:700;color:#1a3a5c">Total</th><th style="width:28px"></th></tr></thead>
-            <tbody id="alsideTierBody_polarboard"></tbody>
-          </table>
-          <div style="padding:8px 12px;background:#f8fafd;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e0e8f0">
-            <span id="alsideTierFin_polarboard" style="font-size:11px;color:#d4860a"></span>
-            <span style="font-size:13px;font-weight:800;color:#1a3a5c">Total: <span id="alsideTierTotal_polarboard">$0.00</span></span>
-          </div>
-        </div>
-        <!-- TIER 3: Charter Oak -->
-        <div style="border:1px solid #b0c4de;border-radius:8px;margin-bottom:8px;overflow:hidden">
-          <div style="background:#2d6a9f;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
-            <span style="font-weight:700;font-size:13px">Option 3 — Charter Oak (.046)</span>
-            <button onclick="autoFillAlsideTier('charteroak')" style="background:#e8500a;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer">⚡ Auto-Fill</button>
-          </div>
-          <table style="width:100%;border-collapse:collapse">
-            <thead><tr style="background:#f4f7fb"><th style="padding:6px 8px;font-size:11px;text-align:left;font-weight:700;color:#1a3a5c">Product</th><th style="padding:6px 8px;font-size:11px;text-align:center;font-weight:700;color:#1a3a5c">Qty</th><th style="padding:6px 8px;font-size:11px;text-align:right;font-weight:700;color:#1a3a5c">Total</th><th style="width:28px"></th></tr></thead>
-            <tbody id="alsideTierBody_charteroak"></tbody>
-          </table>
-          <div style="padding:8px 12px;background:#f8fafd;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e0e8f0">
-            <span id="alsideTierFin_charteroak" style="font-size:11px;color:#d4860a"></span>
-            <span style="font-size:13px;font-weight:800;color:#1a3a5c">Total: <span id="alsideTierTotal_charteroak">$0.00</span></span>
-          </div>
-        </div>
+        <h3 id="comparisonTitle" style="color:#1a3a5c">📊 3-Option Comparison</h3>
+        <p id="comparisonHint" style="font-size:12px;color:#6b7a90;margin:0 0 14px">Each option builds its own complete line-item estimate. Click <strong>Auto-Fill</strong> on each tier to populate from your measurements, then adjust as needed. Adding a product from the list above adds it to all three options.</p>
+        <div id="comparisonTierCards"></div>
       </div>
     </div>
 
@@ -1270,6 +1238,26 @@ let TEMPLATES = {
     pitchItems: { 30:'steep1', 40:'steep2' },
     layerItem: null,
   },
+  'roof-comparison': {
+    id: 'roof-comparison', name: 'Roof Comparison', label: 'Roofing — GAF / IKO / Metal', type: 'roof_comparison', timeline: '4 to 8 weeks from final measure',
+    isComparison: true,
+    description: 'Side-by-side roofing comparison — GAF HDZ, IKO Cambridge, and Metal R-Panel presented together so the customer can choose the option that fits their budget and goals.\n\nAdvantage-size synthetic underlayment to protect the sheeting. Ice and water shield installed 6 ft from the edge (2 layers) and 3 ft in the valley, and all new drip edge.\n\n(2) pieces of wood are included in the job price. If any more need to be replaced, we will document the replacement and an additional charge of $65 per sheet will be added to the balance due.',
+    warranty: 'See individual option warranty details below.',
+    colorFields: [
+      {id:'shingleColor',  label:'Shingle Color (GAF / IKO)',   options:'shingle_gaf'},
+      {id:'dripEdgeColor', label:'Drip Edge Color',             options:'drip_edge',  hint:'White or Brown'},
+      {id:'flashingColor', label:'Flashing Color',              options:'flashing',   hint:'Black or Brown'},
+      {id:'metalColor',    label:'Metal Color (Metal option)',  options:'metal_color'},
+    ],
+    fixedItems: ['chimney','pipebo','nails','delivery','permits'],
+    dimItems: { ridgeLF:'ridge', eaveLF:['f9748aee','leading'], iceWaterLF:'icewater', valleyLF:'step', gutterLF:'gutter5' },
+    pitchItems: { 30:'steep1', 40:'steep2' }, layerItem: 'extra',
+    tiers: [
+      { key:'gaf',   name:'Option 1 — GAF HDZ',       mainProductId:'gafhz',    layerItem:'extra', pitchItems:{30:'steep1',40:'steep2'}, dimItems:{ ridgeLF:'ridge', eaveLF:['f9748aee','leading'], iceWaterLF:'icewater', valleyLF:'step', gutterLF:'gutter5' }, fixedItems:['chimney','pipebo','nails','delivery','permits','timeline4to6'], warranty:'GAF Master Elite Lifetime Warranty on Labor and Material — transferable for 50 years prorated to next homeowner.' },
+      { key:'iko',   name:'Option 2 — IKO Cambridge', mainProductId:'ikocam',   layerItem:'extra', pitchItems:{30:'steep1',40:'steep2'}, dimItems:{ ridgeLF:'ridge', eaveLF:['f9748aee','leading'], iceWaterLF:'icewater', valleyLF:'step', gutterLF:'gutter5' }, fixedItems:['chimney','pipebo','nails','delivery','permits','timeline4to6'], warranty:'50 Year Manufacturer Material Warranty and 10 Year Craftsmanship Warranty to original homeowner, transferable pro-rated.' },
+      { key:'metal', name:'Option 3 — Metal R-Panel', mainProductId:'17dbb335', layerItem:null,    pitchItems:{30:'steep1',40:'steep2'}, dimItems:{ valleyLF:'step', gutterLF:'gutter6' }, fixedItems:['chimney','pipebo','delivery','permits','timeline6to8'], warranty:'Lifetime Warranty. 10-year no-fade paint warranty. 25-year transferable pro-rated.' },
+    ],
+  },
   'ody-housewrap': {
     id: 'ody-housewrap', name: 'Ody Plus .044 House Wrap', label: 'Odyssey Plus .044 w/ House Wrap', type: 'siding', timeline: '13 to 17 weeks from final measure',
     mainProductId: 'odysseywrap',
@@ -1548,9 +1536,10 @@ async function loadTemplatesFromDB() {
 }
 
 function renderTemplateGrid() {
-  const TYPE_ORDER = ['roof', 'siding', 'alside_comparison', 'windows', 'doors', 'gutters'];
+  const TYPE_ORDER = ['roof', 'roof_comparison', 'siding', 'alside_comparison', 'windows', 'doors', 'gutters'];
   const TYPE_LABELS = {
     roof:              'Roofing',
+    roof_comparison:   'Roofing — Comparison',
     siding:            'Siding',
     alside_comparison: 'Siding — Comparison',
     windows:           'Windows',
@@ -1559,6 +1548,7 @@ function renderTemplateGrid() {
   };
   const TYPE_ICONS = {
     roof:              '🏠',
+    roof_comparison:   '📊',
     siding:            '🧱',
     alside_comparison: '📊',
     windows:           '🪟',
@@ -1698,13 +1688,27 @@ function selectTemplate(id) {
     if (tplCard) tplCard.classList.add('active');
     document.getElementById('statusTemplate').textContent = '📐 ' + activeTemplate.label;
 
-    if (activeTemplate.type === 'alside_comparison') {
+    if (activeTemplate.isComparison || activeTemplate.type === 'alside_comparison') {
       isAlsideComparison = true;
-      setProjectType('siding');
+      const isRoofCompare = activeTemplate.type === 'roof_comparison';
+      setProjectType(isRoofCompare ? 'roof' : 'siding');
       buildColorFields();
       if (bar) bar.style.display = 'none';
       if (alsideSection) alsideSection.style.display = 'block';
-      if (!alsideTiers) alsideTiers = { housewrap: [], polarboard: [], charteroak: [] };
+      // (Re)initialize tier buckets when they don't match this template's tier keys.
+      const wantKeys = (activeTemplate.tiers || []).map(t => t.key).sort().join(',');
+      const haveKeys = alsideTiers ? Object.keys(alsideTiers).sort().join(',') : '';
+      if (!alsideTiers || wantKeys !== haveKeys) {
+        alsideTiers = {};
+        (activeTemplate.tiers || []).forEach(t => { alsideTiers[t.key] = []; });
+      }
+      const titleEl = document.getElementById('comparisonTitle');
+      const hintEl  = document.getElementById('comparisonHint');
+      if (titleEl) titleEl.textContent = '📊 ' + (activeTemplate.label || '3-Option Comparison');
+      if (hintEl) hintEl.innerHTML = 'Each option builds its own complete line-item estimate. Click <strong>Auto-Fill</strong> on each tier to populate from your '
+        + (isRoofCompare ? 'roof' : 'siding') + ' measurements, then adjust as needed. Adding a product from the list above adds it to all '
+        + ((activeTemplate.tiers || []).length) + ' options.';
+      renderComparisonCards(activeTemplate);
       renderAlsideTiers();
     } else {
       isAlsideComparison = false;
@@ -1725,6 +1729,86 @@ function selectTemplate(id) {
 // ============================================================
 // ALSIDE COMPARISON — tier management
 // ============================================================
+// Build the tier cards for whichever comparison template is active (siding OR roof).
+function renderComparisonCards(tpl) {
+  const wrap = document.getElementById('comparisonTierCards');
+  if (!wrap || !tpl || !tpl.tiers) return;
+  const headerColors = ['#1a3a5c', '#234f7a', '#2d6a9f', '#3a7fb0'];
+  wrap.innerHTML = tpl.tiers.map((tier, i) => {
+    const hc = headerColors[i % headerColors.length];
+    const mb = (i === tpl.tiers.length - 1) ? '8px' : '16px';
+    return `
+      <div style="border:1px solid #b0c4de;border-radius:8px;margin-bottom:${mb};overflow:hidden">
+        <div style="background:${hc};color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-weight:700;font-size:13px">${escHtmlPE(tier.name)}</span>
+          <button onclick="autoFillTier('${tier.key}')" style="background:#e8500a;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer">⚡ Auto-Fill</button>
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#f4f7fb"><th style="padding:6px 8px;font-size:11px;text-align:left;font-weight:700;color:#1a3a5c">Product</th><th style="padding:6px 8px;font-size:11px;text-align:center;font-weight:700;color:#1a3a5c">Qty</th><th style="padding:6px 8px;font-size:11px;text-align:right;font-weight:700;color:#1a3a5c">Total</th><th style="width:28px"></th></tr></thead>
+          <tbody id="alsideTierBody_${tier.key}"></tbody>
+        </table>
+        <div style="padding:8px 12px;background:#f8fafd;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e0e8f0">
+          <span id="alsideTierFin_${tier.key}" style="font-size:11px;color:#d4860a"></span>
+          <span style="font-size:13px;font-weight:800;color:#1a3a5c">Total: <span id="alsideTierTotal_${tier.key}">$0.00</span></span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// Dispatch Auto-Fill to the right builder based on the active comparison type.
+function autoFillTier(tierKey) {
+  const tpl = activeTemplate;
+  if (!tpl) return;
+  if (tpl.type === 'roof_comparison') return autoFillRoofTier(tierKey);
+  return autoFillAlsideTier(tierKey);
+}
+
+// Roof comparison Auto-Fill — mirrors autoQuoteRoof, applying all 6 measurement fixes
+// per-tier (drip = eaves+rakes, starter includes waste, ice&water auto, valley+step, editable
+// waste, no stories multiplier). Metal's tier.dimItems omit drip/starter/ice&water/ridge.
+function autoFillRoofTier(tierKey) {
+  const tpl = activeTemplate;
+  if (!tpl || !tpl.tiers || !alsideTiers) return;
+  if (!roofSQ) { alert('Enter roof sq ft first (in the sidebar measurements).'); return; }
+  const tier = tpl.tiers.find(t => t.key === tierKey);
+  if (!tier) return;
+
+  const items = [];
+  const push = (pid, qty) => { if (!pid || !qty) return; const p = PRODUCTS.find(x => x.id === pid); if (p) items.push({ product: p, qty, note: '' }); };
+
+  const layers     = parseInt(document.getElementById('roofLayers').value) || 0;
+  const ridgeLF    = parseFloat(document.getElementById('ridgeLF').value) || 0;
+  const eaveLF     = parseFloat(document.getElementById('eaveLF').value) || 0;
+  const rakeLF     = parseFloat(document.getElementById('rakeLF')?.value) || 0;
+  const gutterLF   = parseFloat(document.getElementById('gutterLF').value) || 0;
+  const valleyLF   = parseFloat(document.getElementById('valleyLF').value) || 0;
+  const iceWaterLF = parseFloat(document.getElementById('iceWaterLF').value) || 0;
+  const waste      = parseFloat(document.getElementById('roofWaste')?.value) || 1.18;
+
+  push(tier.mainProductId, roofSQ);
+
+  const pi = tier.pitchItems || {};
+  if (pitchSurcharge === 30 && pi[30]) push(pi[30], roofSQ);
+  if (pitchSurcharge === 40 && pi[40]) push(pi[40], roofSQ);
+  if (layers > 0 && tier.layerItem) push(tier.layerItem, roofSQ);
+
+  const dims = tier.dimItems || {};
+  if (dims.ridgeLF && ridgeLF > 0) push(dims.ridgeLF, Math.ceil(ridgeLF / 4));
+  if (dims.eaveLF && (eaveLF > 0 || rakeLF > 0)) {
+    const [dripId, starterId] = Array.isArray(dims.eaveLF) ? dims.eaveLF : [dims.eaveLF, null];
+    if (dripId && (eaveLF + rakeLF) > 0) push(dripId, Math.round(eaveLF + rakeLF));   // drip edge = eaves + rakes
+    if (starterId && eaveLF > 0) push(starterId, Math.ceil(eaveLF * waste));           // starter strip includes waste
+  }
+  if (dims.iceWaterLF && iceWaterLF > 0) push(dims.iceWaterLF, iceWaterLF);
+  if (dims.valleyLF && valleyLF > 0) push(dims.valleyLF, valleyLF);
+  if (dims.gutterLF && gutterLF > 0) { push(dims.gutterLF, gutterLF); push('gutterds', 1); }
+
+  (tier.fixedItems || tpl.fixedItems || []).forEach(fid => push(fid, 1));
+
+  alsideTiers[tierKey] = items;
+  renderAlsideTiers();
+}
+
 function autoFillAlsideTier(tierKey) {
   const tpl = activeTemplate;
   if (!tpl || !tpl.tiers || !alsideTiers) return;
@@ -2068,10 +2152,11 @@ async function loadQuoteById(id) {
     const savedTiers = alsideTiers;
     selectTemplate(q.template_id);
     alsideTiers = savedTiers;
-    if (activeTemplate?.type === 'alside_comparison' && alsideTiers) {
+    if ((activeTemplate?.isComparison || activeTemplate?.type === 'alside_comparison') && alsideTiers) {
       isAlsideComparison = true;
       const alsideSection = document.getElementById('alsideSection');
       if (alsideSection) alsideSection.style.display = 'block';
+      renderComparisonCards(activeTemplate);
       renderAlsideTiers();
     }
   }
@@ -2294,14 +2379,42 @@ function setPitch(btn, surcharge) {
 // ============================================================
 function calcRoofSQ() {
   const sqft = parseFloat(document.getElementById('roofSqft').value) || 0;
-  const stories = parseFloat(document.getElementById('roofStories').value) || 1;
+  // Waste factor is editable (defaults to 18%; EagleView reports often suggest 10%).
+  // Stories are NOT applied to material quantity — they affect labor, not roof area.
+  const waste = parseFloat(document.getElementById('roofWaste')?.value) || 1.18;
   if (sqft > 0) {
-    roofSQ = Math.ceil(sqft / 100 * stories * 1.18 * 10) / 10;
+    roofSQ = Math.ceil(sqft / 100 * waste * 10) / 10;
     document.getElementById('roofSqVal').textContent = roofSQ.toFixed(1);
     document.getElementById('roofSqResult').style.display = 'flex';
   } else {
     document.getElementById('roofSqResult').style.display = 'none';
   }
+}
+
+// Ice & Water auto-derives from eaves (2 layers = eaves × 2, matching SumoQuote logic).
+// Only auto-fills when the field is empty or was previously auto-filled, so a manual override sticks.
+function deriveIceWater() {
+  const eaveEl = document.getElementById('eaveLF');
+  const iceEl  = document.getElementById('iceWaterLF');
+  if (!eaveEl || !iceEl) return;
+  const eave = parseFloat(eaveEl.value) || 0;
+  if (eave > 0 && (iceEl.value === '' || iceEl.dataset.auto === '1')) {
+    iceEl.value = Math.round(eave * 2);
+    iceEl.dataset.auto = '1';
+  }
+}
+
+// EagleView recommends waste based on how cut-up the roof is. Their measurement feed doesn't
+// return the % directly, so we mirror their logic from the complexity + facet count it DOES return:
+// Simple ≈ 10%, Normal ≈ 12%, Complex ≈ 15%. Reps can override in the Waste Factor dropdown.
+function recommendedWastePct(s) {
+  const cx = String(s.StructureComplexity || '').toLowerCase();
+  if (cx.includes('simple'))  return 10;
+  if (cx.includes('complex')) return 15;
+  if (cx) return 12; // normal / average / moderate
+  const facets = parseFloat(s.TotalRoofFacets) || 0;
+  if (facets > 0) return facets <= 8 ? 10 : (facets <= 14 ? 12 : 15);
+  return 10; // EagleView's baseline suggestion when we can't tell
 }
 
 // ============================================================
@@ -2461,11 +2574,49 @@ window.addEventListener('load', async function () {
   for (let i = 0; i < 12; i++) { try { const { data: { session } } = await _supa.auth.getSession(); if (session) { evAutoCheck(); break; } } catch (e) {} await new Promise(r => setTimeout(r, 500)); }
 });
 
+// Duplicate-order guard modal — big red STOP on top, big yellow WARNING at the end.
+function evConfirmDuplicate(existing) {
+  return new Promise((resolve) => {
+    const labels = { full: 'Full House', wallsdoors: 'Walls, Windows & Doors', roof: 'Roof', siding: 'Siding' };
+    const seen = {}, uniq = [];
+    (existing || []).forEach(x => { const k = (x.ev_report_id || x.id) + '|' + x.report_type; if (!seen[k]) { seen[k] = 1; uniq.push(x); } });
+    const lines = uniq.map(x => '• <strong>' + (labels[x.report_type] || x.report_type) + '</strong> — ' + (x.status === 'complete' ? 'ready to use' : x.status) + ' (EV #' + (x.ev_report_id || '—') + ')').join('<br>');
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML =
+      '<div style="background:#fff;border-radius:14px;max-width:470px;width:100%;padding:24px;text-align:center;box-shadow:0 12px 44px rgba(0,0,0,.35)">'
+      + '<div style="font-size:80px;line-height:1;margin-bottom:4px">🛑</div>'
+      + '<div style="font-size:19px;font-weight:900;color:#b02020;margin:2px 0 12px;letter-spacing:.3px">STOP — this address already has a report</div>'
+      + '<div style="font-size:13px;color:#333;line-height:1.65;text-align:left;background:#f7f9fc;border:1px solid #e3e8ef;border-radius:8px;padding:11px 13px">'
+      +   'Existing EagleView report(s) for this property:<br>' + lines
+      +   '<br><br>Placing another order creates a <strong>brand-new EagleView report and will charge you again</strong>. If a report above is already <em>ready to use</em>, apply it instead of re-ordering.'
+      + '</div>'
+      + '<div style="font-size:70px;line-height:1;margin:14px 0 2px">⚠️</div>'
+      + '<div style="display:flex;gap:10px;margin-top:12px">'
+      +   '<button id="evDupCancel" style="flex:1;padding:12px;border:1px solid #ccc;background:#fff;border-radius:8px;font-weight:800;font-size:14px;cursor:pointer">Cancel</button>'
+      +   '<button id="evDupGo" style="flex:1;padding:12px;border:none;background:#b02020;color:#fff;border-radius:8px;font-weight:800;font-size:14px;cursor:pointer">Order anyway</button>'
+      + '</div></div>';
+    document.body.appendChild(ov);
+    const done = (v) => { ov.remove(); resolve(v); };
+    ov.querySelector('#evDupCancel').onclick = () => done(false);
+    ov.querySelector('#evDupGo').onclick = () => done(true);
+    ov.onclick = (e) => { if (e.target === ov) done(false); };
+  });
+}
+
 async function orderEagleView(type) {
   const a = evAddress();
   if (!a.Address || !a.City || !a.State || !a.Zip) { alert('Enter street address, city, state, and zip first.'); return; }
   const EV_LABELS = { full: 'Full House (Roof + Siding)', wallsdoors: 'Walls, Windows & Doors', roof: 'Roof', siding: 'Siding' };
   const label = EV_LABELS[type] || type;
+  // Guard: warn if this property already has any EagleView report before placing a new (paid) order.
+  try {
+    const existing = await evFindReports(a);
+    if (existing && existing.length) {
+      const proceed = await evConfirmDuplicate(existing);
+      if (!proceed) { evStatus('Order cancelled — check the existing report(s) with “Check / Apply”.', '#777'); return; }
+    }
+  } catch (e) { /* if the lookup fails, don't block the order */ }
   try {
     evStatus('⏳ Getting ' + label + ' report price…');
     const priced = await evCall({ action: 'price', report: type, address: a });
@@ -2540,13 +2691,45 @@ function applyEV(id) {
 
 function applyEVRoof(s) {
   const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+
+  // Waste factor — set EagleView's recommended waste automatically on every apply (rep can change after).
+  // EagleView's measurement feed doesn't carry the suggested-waste % in its summary attributes (that lives
+  // in the report's waste table / PDF), so we (1) use a real waste field if a future report ever includes one,
+  // else (2) derive the recommendation the same way EagleView does — from roof complexity & cut-up.
+  let evPct = evNum(s.SuggestedWastePercent) ?? evNum(s.WastePercent) ?? evNum(s.SuggestedWaste);
+  if (evPct != null && evPct <= 2) evPct = evPct * 100; // normalize 0.10 -> 10
+  if (evPct == null) evPct = recommendedWastePct(s);
+  {
+    const factor = 1 + evPct / 100;
+    const sel = document.getElementById('roofWaste');
+    if (sel) {
+      const target = factor.toFixed(2);
+      if ([...sel.options].some(o => o.value === target)) sel.value = target;
+      else { const opt = new Option(Math.round(evPct) + '% (EagleView)', target, true, true); sel.add(opt); }
+    }
+  }
+
   if (s.TotalRoofArea != null) { set('roofSqft', Math.round(evNum(s.TotalRoofArea))); if (typeof calcRoofSQ === 'function') calcRoofSQ(); }
   if (s.PredominantPitch) { const p = parseInt(String(s.PredominantPitch), 10); if (!isNaN(p)) { const idx = p >= 11 ? 2 : (p >= 7 ? 1 : 0); const b = document.querySelectorAll('.pitch-btn'); if (b[idx]) b[idx].click(); } }
+
   set('ridgeLF', evNum(s.TotalHipsandRidgesLength));
-  set('eaveLF', evNum(s.TotalEavesLength));
-  set('valleyLF', evNum(s.TotalValleysLength));
+
+  const eave = evNum(s.TotalEavesLength);
+  set('eaveLF', eave);
+  set('rakeLF', evNum(s.TotalRakesLength));           // Fix #1: rakes feed drip edge (eaves + rakes)
+
+  // Fix #2: step flashing is reported separately from valleys — combine them into the Valley + Step field.
+  const valleys = evNum(s.TotalValleysLength) || 0;
+  const step    = evNum(s.TotalStepFlashingLength) ?? evNum(s.StepFlashing) ?? 0;
+  if (valleys + step > 0) set('valleyLF', Math.round((valleys + step) * 10) / 10);
+
+  // Fix #3: Ice & Water auto-derives to eaves × 2 layers.
+  if (eave != null && eave > 0) { const ice = document.getElementById('iceWaterLF'); if (ice) { ice.value = Math.round(eave * 2); ice.dataset.auto = '1'; } }
+
   set('gutterLF', evNum(s.TotalEavesLength)); // gutters run along the eaves
-  evStatus('✅ Roof measurements applied to the quote. (Ice &amp; Water and any gutter adjustments are manual.)', '#1a7a2e');
+
+  const dripLF = (eave || 0) + (evNum(s.TotalRakesLength) || 0);
+  evStatus('✅ Roof measurements applied: waste set to EagleView\'s recommended ' + Math.round(evPct) + '% (editable), drip edge = eaves + rakes (' + Math.round(dripLF) + ' LF), Ice &amp; Water = eaves × 2, valleys + step flashing combined. Adjust any field as needed.', '#1a7a2e');
 }
 
 function applyEVSiding(s, roofSummary) {
@@ -2602,9 +2785,11 @@ function autoQuoteRoof() {
   const layers = parseInt(document.getElementById('roofLayers').value) || 0;
   const ridgeLF = parseFloat(document.getElementById('ridgeLF').value) || 0;
   const eaveLF = parseFloat(document.getElementById('eaveLF').value) || 0;
+  const rakeLF = parseFloat(document.getElementById('rakeLF')?.value) || 0;
   const gutterLF = parseFloat(document.getElementById('gutterLF').value) || 0;
   const valleyLF = parseFloat(document.getElementById('valleyLF').value) || 0;
   const iceWaterLF = parseFloat(document.getElementById('iceWaterLF').value) || 0;
+  const waste = parseFloat(document.getElementById('roofWaste')?.value) || 1.18;
 
   // Main shingles
   const mainId = activeTemplate && activeTemplate.type === 'roof' ? activeTemplate.mainProductId : 'gafhz';
@@ -2617,14 +2802,22 @@ function autoQuoteRoof() {
   // Extra layer
   if (layers > 0) addItemDirect('extra', roofSQ);
 
-  // Dimension-based items
-  if (eaveLF > 0) { addItemDirect('f9748aee', eaveLF); addItemDirect('leading', eaveLF); }
-  if (iceWaterLF > 0) addItemDirect('icewater', iceWaterLF);
-  if (ridgeLF > 0) addItemDirect('ridge', ridgeLF);
-  if (valleyLF > 0) addItemDirect('step', valleyLF);
-  if (gutterLF > 0) {
-    const gutId = (activeTemplate && activeTemplate.id === 'metal') ? 'gutter6' : 'gutter5';
-    addItemDirect(gutId, gutterLF);
+  // Dimension-based items — driven by this template's dimItems so Metal skips
+  // drip/starter/ice&water/ridge (its dimItems only include valley + gutter).
+  const dims = (activeTemplate && activeTemplate.type === 'roof' && activeTemplate.dimItems)
+    ? activeTemplate.dimItems
+    : { ridgeLF:'ridge', eaveLF:['f9748aee','leading'], iceWaterLF:'icewater', valleyLF:'step', gutterLF:'gutter5' };
+
+  if (dims.ridgeLF && ridgeLF > 0) addItemDirect(dims.ridgeLF, Math.ceil(ridgeLF / 4)); // Ridge Vent & Cap priced per 4-ft piece
+  if (dims.eaveLF && (eaveLF > 0 || rakeLF > 0)) {
+    const [dripId, starterId] = Array.isArray(dims.eaveLF) ? dims.eaveLF : [dims.eaveLF, null];
+    if (dripId && (eaveLF + rakeLF) > 0) addItemDirect(dripId, Math.round(eaveLF + rakeLF));   // Fix #1: drip edge = eaves + rakes
+    if (starterId && eaveLF > 0) addItemDirect(starterId, Math.ceil(eaveLF * waste));           // Fix #4: starter strip includes waste
+  }
+  if (dims.iceWaterLF && iceWaterLF > 0) addItemDirect(dims.iceWaterLF, iceWaterLF);            // Fix #3: value auto-derived (eaves × 2)
+  if (dims.valleyLF && valleyLF > 0) addItemDirect(dims.valleyLF, valleyLF);                    // Fix #2: valleys + step flashing
+  if (dims.gutterLF && gutterLF > 0) {
+    addItemDirect(dims.gutterLF, gutterLF);
     addItemDirect('gutterds', 1); // Gutter Down Spouts — qty can be adjusted
   }
 
@@ -2699,7 +2892,7 @@ function addProduct(id) {
   const p = PRODUCTS.find(x => x.id === id);
   if (!p) return;
   // In the 3-tier comparison build phase, add the selected product to ALL three tiers.
-  if (activeTemplate && activeTemplate.type === 'alside_comparison' && alsideTiers) {
+  if (activeTemplate && (activeTemplate.isComparison || activeTemplate.type === 'alside_comparison') && alsideTiers) {
     Object.keys(alsideTiers).forEach(tierKey => {
       const arr = alsideTiers[tierKey];
       const existing = arr.find(i => i.product.id === id);
