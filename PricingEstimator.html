@@ -1799,7 +1799,7 @@ function autoFillRoofTier(tierKey) {
   // Hip/ridge cap is folded into the shingle line above (no separate cap product).
   if (dims.eaveLF && (eaveLF > 0 || rakeLF > 0)) {
     const [dripId, starterId] = Array.isArray(dims.eaveLF) ? dims.eaveLF : [dims.eaveLF, null];
-    if (dripId && (eaveLF + rakeLF) > 0) push(dripId, Math.round(eaveLF + rakeLF));   // drip edge = eaves + rakes (EagleView-exact)
+    if (dripId && (eaveLF + rakeLF) > 0) push(dripId, dripEdgeQty(eaveLF, rakeLF));   // drip = eaves+rakes rounded up to whole 10-ft sticks
     if (starterId && eaveLF > 0) push(starterId, Math.ceil(eaveLF * STARTER_WASTE));   // starter strip = eaves × fixed 18% (SumoQuote)
   }
   if (dims.iceWaterLF && iceWaterLF > 0) push(dims.iceWaterLF, iceWaterLF);
@@ -2832,6 +2832,11 @@ const CAP_LF_PER_SQ = 60;
 // from the shingle waste). eaves × 1.18 → e.g. 88 → 104, matching SumoQuote.
 const STARTER_WASTE = 1.18;
 
+// Drip edge is bought in 10-ft sticks, so it's rounded UP to whole sticks — that's the real
+// purchasing waste (241 ft → 250 ft). Change DRIP_STICK_FT if your supplier uses 10'6" lengths.
+const DRIP_STICK_FT = 10;
+const dripEdgeQty = (eaveLF, rakeLF) => Math.ceil((eaveLF + rakeLF) / DRIP_STICK_FT) * DRIP_STICK_FT;
+
 function autoQuoteRoof() {
   if (!roofSQ) { alert('Please enter roof square footage first.'); return; }
   quoteItems = quoteItems.filter(i => i.product.cat !== 'Roofing');
@@ -2866,7 +2871,7 @@ function autoQuoteRoof() {
   // Dimension-based items. Hip/ridge cap is folded into the shingle line above (no separate cap product).
   if (dims.eaveLF && (eaveLF > 0 || rakeLF > 0)) {
     const [dripId, starterId] = Array.isArray(dims.eaveLF) ? dims.eaveLF : [dims.eaveLF, null];
-    if (dripId && (eaveLF + rakeLF) > 0) addItemDirect(dripId, Math.round(eaveLF + rakeLF));   // Fix #1: drip edge = eaves + rakes (EagleView-exact)
+    if (dripId && (eaveLF + rakeLF) > 0) addItemDirect(dripId, dripEdgeQty(eaveLF, rakeLF));     // Fix #1: drip = eaves+rakes rounded up to whole 10-ft sticks
     if (starterId && eaveLF > 0) addItemDirect(starterId, Math.ceil(eaveLF * STARTER_WASTE));   // Fix #4: starter strip = eaves × fixed 18% (SumoQuote)
   }
   if (dims.iceWaterLF && iceWaterLF > 0) addItemDirect(dims.iceWaterLF, iceWaterLF);            // Fix #3: value auto-derived (eaves × 2)
