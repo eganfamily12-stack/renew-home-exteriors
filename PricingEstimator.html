@@ -1857,9 +1857,25 @@ function removeTierItem(tierKey, idx) {
   renderAlsideTiers();
 }
 
+// Manually set the quantity of a comparison tier line item (0 or blank removes it).
+function updateTierQty(tierKey, idx, val) {
+  if (!alsideTiers || !alsideTiers[tierKey] || !alsideTiers[tierKey][idx]) return;
+  const v = parseFloat(val);
+  if (v > 0) alsideTiers[tierKey][idx].qty = v;
+  else alsideTiers[tierKey].splice(idx, 1);
+  renderAlsideTiers();
+}
+
 function getTierTotal(tierKey) {
   if (!alsideTiers || !alsideTiers[tierKey]) return 0;
   return alsideTiers[tierKey].reduce((s, i) => s + i.product.price * i.qty, 0);
+}
+
+// In any comparison, the flat "Quote Line Items" view mirrors the TOP option — the first tier in
+// the layout (GAF for roofing, House Wrap for siding). Returns that key, else null (single quotes).
+function mirrorTierKey() {
+  if (!isAlsideComparison || !activeTemplate || !activeTemplate.tiers || !activeTemplate.tiers.length || !alsideTiers) return null;
+  return activeTemplate.tiers[0].key;
 }
 
 function renderAlsideTiers() {
@@ -1878,7 +1894,9 @@ function renderAlsideTiers() {
         ? items.map((item, i) => `
           <tr style="border-bottom:1px solid #eef2f8">
             <td style="padding:5px 8px;font-size:12px">${escHtmlPE(item.product.name)}</td>
-            <td style="padding:5px 8px;text-align:center;font-size:12px;color:#6b7a90">${item.qty} ${item.product.unit}</td>
+            <td style="padding:5px 8px;text-align:center;font-size:12px;color:#6b7a90;white-space:nowrap">
+              <input type="number" value="${item.qty}" min="0" step="any" onchange="updateTierQty('${tier.key}',${i},this.value)" style="width:62px;padding:3px 5px;border:1px solid #c8d0dc;border-radius:4px;font-size:12px;text-align:center"> ${escHtmlPE(item.product.unit)}
+            </td>
             <td style="padding:5px 8px;text-align:right;font-size:12px;font-weight:700">$${(item.product.price * item.qty).toFixed(2)}</td>
             <td style="padding:5px 8px;text-align:center">
               <button onclick="removeTierItem('${tier.key}',${i})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:16px;line-height:1">×</button>
@@ -1893,6 +1911,15 @@ function renderAlsideTiers() {
         ? `est. $${monthly.toFixed(2)}/mo` : '';
     }
   });
+  // Any comparison: mirror the TOP option into the flat Quote Line Items view (with its totals
+  // and scope) so added items appear there too.
+  const gk = mirrorTierKey();
+  if (gk) {
+    quoteItems = (alsideTiers[gk] || []).map(it => ({ product: it.product, qty: it.qty, note: it.note || '' }));
+    if (typeof renderQuote === 'function') renderQuote();
+  } else if (typeof renderScopePreview === 'function') {
+    renderScopePreview();
+  }
 }
 
 // ============================================================
@@ -2296,26 +2323,31 @@ function generateScopeText() {
   // Exclude purely financial/admin items from scope display
   const SKIP_CATS = new Set(['Permit','Delivery','Timeline']);
   const SKIP_NAMES = /^(permit|deliver|timeline|schedule)/i;
-  const scopeItems = quoteItems.filter(i =>
-    !SKIP_CATS.has(i.product.cat) && !SKIP_NAMES.test(i.product.name)
-  );
-  const adminItems = quoteItems.filter(i =>
-    SKIP_CATS.has(i.product.cat) || SKIP_NAMES.test(i.product.name)
-  );
+  const isScopeItem = i => !SKIP_CATS.has(i.product.cat) && !SKIP_NAMES.test(i.product.name);
+  const fmtQty = i => (i.qty !== 1 ? ' (' + (Number.isInteger(i.qty) ? i.qty : parseFloat(i.qty).toFixed(2)) + ' ' + (i.product.unit || 'unit') + ')' : '');
 
-  if (scopeItems.length) {
-    lines.push('');
-    lines.push('WORK INCLUDED:');
-    scopeItems.forEach(i => {
-      const qty = i.qty !== 1 ? ' (' + (Number.isInteger(i.qty) ? i.qty : parseFloat(i.qty).toFixed(2)) + ' ' + (i.product.unit || 'unit') + ')' : '';
-      lines.push('  • ' + i.product.name + qty + (i.note ? ' — ' + i.note : ''));
+  if (isAlsideComparison && alsideTiers && tpl && tpl.tiers) {
+    // 3-option comparison: list WORK INCLUDED under each option, from that option's tier items.
+    tpl.tiers.forEach(tier => {
+      const items = (alsideTiers[tier.key] || []).filter(isScopeItem);
+      if (!items.length) return;
+      lines.push('');
+      lines.push('WORK INCLUDED — ' + tier.name.toUpperCase() + ':');
+      items.forEach(i => lines.push('  • ' + i.product.name + fmtQty(i) + (i.note ? ' — ' + i.note : '')));
     });
-  }
-
-  if (adminItems.length) {
-    lines.push('');
-    lines.push('ADMINISTRATIVE:');
-    adminItems.forEach(i => lines.push('  • ' + i.product.name));
+  } else {
+    const scopeItems = quoteItems.filter(isScopeItem);
+    const adminItems = quoteItems.filter(i => !isScopeItem(i));
+    if (scopeItems.length) {
+      lines.push('');
+      lines.push('WORK INCLUDED:');
+      scopeItems.forEach(i => lines.push('  • ' + i.product.name + fmtQty(i) + (i.note ? ' — ' + i.note : '')));
+    }
+    if (adminItems.length) {
+      lines.push('');
+      lines.push('ADMINISTRATIVE:');
+      adminItems.forEach(i => lines.push('  • ' + i.product.name));
+    }
   }
 
   // ── Warranty ──
@@ -2935,6 +2967,18 @@ function addProduct(id) {
 }
 
 function removeItem(idx) {
+  // Comparison: the Quote Line Items mirror the top option tier, so edit that tier directly.
+  const gk = mirrorTierKey();
+  if (gk) {
+    const arr = alsideTiers[gk];
+    if (arr && arr[idx]) {
+      const rm = arr[idx];
+      arr.splice(idx, 1);
+      if (GAF_SHINGLE_IDS.has(rm.product.id)) alsideTiers[gk] = arr.filter(i => !GAF_ONLY_PRODUCTS.has(i.product.id));
+    }
+    renderAlsideTiers(); renderProductList();
+    return;
+  }
   const removed = quoteItems[idx];
   quoteItems.splice(idx, 1);
   // If GAF shingles were removed, also drop any GAF-only warranty items
@@ -2945,6 +2989,22 @@ function removeItem(idx) {
 }
 
 function updateQty(idx, val) {
+  // Comparison: the Quote Line Items mirror the top option tier, so edit that tier directly.
+  const gk = mirrorTierKey();
+  if (gk) {
+    const arr = alsideTiers[gk];
+    if (arr && arr[idx]) {
+      const v = parseFloat(val);
+      if (v > 0) arr[idx].qty = v;
+      else {
+        const rm = arr[idx];
+        arr.splice(idx, 1);
+        if (GAF_SHINGLE_IDS.has(rm.product.id)) alsideTiers[gk] = arr.filter(i => !GAF_ONLY_PRODUCTS.has(i.product.id));
+      }
+    }
+    renderAlsideTiers();
+    return;
+  }
   const v = parseFloat(val);
   if (v > 0) {
     quoteItems[idx].qty = v;
