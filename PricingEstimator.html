@@ -1799,8 +1799,8 @@ function autoFillRoofTier(tierKey) {
   // Hip/ridge cap is folded into the shingle line above (no separate cap product).
   if (dims.eaveLF && (eaveLF > 0 || rakeLF > 0)) {
     const [dripId, starterId] = Array.isArray(dims.eaveLF) ? dims.eaveLF : [dims.eaveLF, null];
-    if (dripId && (eaveLF + rakeLF) > 0) push(dripId, Math.round(eaveLF + rakeLF));   // drip edge = eaves + rakes
-    if (starterId && eaveLF > 0) push(starterId, Math.ceil(eaveLF * waste));           // starter strip includes waste
+    if (dripId && (eaveLF + rakeLF) > 0) push(dripId, Math.round(eaveLF + rakeLF));   // drip edge = eaves + rakes (EagleView-exact)
+    if (starterId && eaveLF > 0) push(starterId, Math.ceil(eaveLF * STARTER_WASTE));   // starter strip = eaves × fixed 18% (SumoQuote)
   }
   if (dims.iceWaterLF && iceWaterLF > 0) push(dims.iceWaterLF, iceWaterLF);
   if (dims.valleyLF && valleyLF > 0) push(dims.valleyLF, valleyLF);
@@ -2828,6 +2828,10 @@ function calcSidingSQ() {
 // 116 S Maple (45 SQ). Change this one number to re-tune the cap allowance.
 const CAP_LF_PER_SQ = 60;
 
+// Starter strip carries its own fixed waste allowance (SumoQuote uses ~18% on starter, separate
+// from the shingle waste). eaves × 1.18 → e.g. 88 → 104, matching SumoQuote.
+const STARTER_WASTE = 1.18;
+
 function autoQuoteRoof() {
   if (!roofSQ) { alert('Please enter roof square footage first.'); return; }
   quoteItems = quoteItems.filter(i => i.product.cat !== 'Roofing');
@@ -2862,8 +2866,8 @@ function autoQuoteRoof() {
   // Dimension-based items. Hip/ridge cap is folded into the shingle line above (no separate cap product).
   if (dims.eaveLF && (eaveLF > 0 || rakeLF > 0)) {
     const [dripId, starterId] = Array.isArray(dims.eaveLF) ? dims.eaveLF : [dims.eaveLF, null];
-    if (dripId && (eaveLF + rakeLF) > 0) addItemDirect(dripId, Math.round(eaveLF + rakeLF));   // Fix #1: drip edge = eaves + rakes
-    if (starterId && eaveLF > 0) addItemDirect(starterId, Math.ceil(eaveLF * waste));           // Fix #4: starter strip includes waste
+    if (dripId && (eaveLF + rakeLF) > 0) addItemDirect(dripId, Math.round(eaveLF + rakeLF));   // Fix #1: drip edge = eaves + rakes (EagleView-exact)
+    if (starterId && eaveLF > 0) addItemDirect(starterId, Math.ceil(eaveLF * STARTER_WASTE));   // Fix #4: starter strip = eaves × fixed 18% (SumoQuote)
   }
   if (dims.iceWaterLF && iceWaterLF > 0) addItemDirect(dims.iceWaterLF, iceWaterLF);            // Fix #3: value auto-derived (eaves × 2)
   if (dims.valleyLF && valleyLF > 0) addItemDirect(dims.valleyLF, valleyLF);                    // Fix #2: valleys + step flashing
