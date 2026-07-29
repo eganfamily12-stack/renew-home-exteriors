@@ -487,12 +487,11 @@
           <div class="dim-field"><label>Total Sq Ft of Roof</label><input type="number" id="roofSqft" placeholder="e.g. 2400" oninput="calcRoofSQ()"></div>
           <div class="dim-field">
             <label>Waste Factor</label>
-            <select id="roofWaste" onchange="calcRoofSQ()">
-              <option value="1.10">10% (EagleView suggested)</option>
+            <select id="roofWaste" onchange="onWasteChange()">
+              <option value="1.10" selected>10%</option>
               <option value="1.12">12%</option>
               <option value="1.15">15%</option>
-              <option value="1.18" selected>18% Standard</option>
-              <option value="1.20">20%</option>
+              <option value="1.18">18%</option>
             </select>
           </div>
           <div class="dim-field">
@@ -1785,15 +1784,19 @@ function autoFillRoofTier(tierKey) {
   const iceWaterLF = parseFloat(document.getElementById('iceWaterLF').value) || 0;
   const waste      = parseFloat(document.getElementById('roofWaste')?.value) || 1.18;
 
-  push(tier.mainProductId, roofSQ);
+  const dims = tier.dimItems || {};
+
+  // Main shingles — fold hip/ridge cap into the shingle square count for shingle tiers (GAF/IKO),
+  // rounded up to a whole square. Metal (no dims.ridgeLF) stays at plain roof squares.
+  const mainQty = (dims.ridgeLF && ridgeLF > 0) ? Math.ceil(roofSQ + ridgeLF / CAP_LF_PER_SQ) : roofSQ;
+  push(tier.mainProductId, mainQty);
 
   const pi = tier.pitchItems || {};
   if (pitchSurcharge === 30 && pi[30]) push(pi[30], roofSQ);
   if (pitchSurcharge === 40 && pi[40]) push(pi[40], roofSQ);
   if (layers > 0 && tier.layerItem) push(tier.layerItem, roofSQ);
 
-  const dims = tier.dimItems || {};
-  if (dims.ridgeLF && ridgeLF > 0) push(dims.ridgeLF, Math.ceil(ridgeLF / 4));
+  // Hip/ridge cap is folded into the shingle line above (no separate cap product).
   if (dims.eaveLF && (eaveLF > 0 || rakeLF > 0)) {
     const [dripId, starterId] = Array.isArray(dims.eaveLF) ? dims.eaveLF : [dims.eaveLF, null];
     if (dripId && (eaveLF + rakeLF) > 0) push(dripId, Math.round(eaveLF + rakeLF));   // drip edge = eaves + rakes
@@ -2404,17 +2407,25 @@ function deriveIceWater() {
   }
 }
 
-// EagleView recommends waste based on how cut-up the roof is. Their measurement feed doesn't
-// return the % directly, so we mirror their logic from the complexity + facet count it DOES return:
-// Simple ≈ 10%, Normal ≈ 12%, Complex ≈ 15%. Reps can override in the Waste Factor dropdown.
+// Waste factor when applying a report: use EagleView/SumoQuote's suggested % if the data carries
+// one (see applyEVRoof), otherwise default to 10%. The rep can bump it via the Waste Factor
+// dropdown, which re-applies to every populated estimate. (No complexity guess — 10% is the floor.)
 function recommendedWastePct(s) {
-  const cx = String(s.StructureComplexity || '').toLowerCase();
-  if (cx.includes('simple'))  return 10;
-  if (cx.includes('complex')) return 15;
-  if (cx) return 12; // normal / average / moderate
-  const facets = parseFloat(s.TotalRoofFacets) || 0;
-  if (facets > 0) return facets <= 8 ? 10 : (facets <= 14 ? 12 : 15);
-  return 10; // EagleView's baseline suggestion when we can't tell
+  return 10;
+}
+
+// Waste dropdown changed → recompute squares AND push the new factor into every estimate that's
+// already been built (all comparison tiers, or the single roof quote), so nothing is left stale.
+function onWasteChange() {
+  calcRoofSQ();
+  if (!roofSQ) return;
+  if (isAlsideComparison && alsideTiers && activeTemplate && activeTemplate.type === 'roof_comparison') {
+    (activeTemplate.tiers || []).forEach(function(t) {
+      if ((alsideTiers[t.key] || []).length) autoFillRoofTier(t.key);
+    });
+  } else if (activeTemplate && activeTemplate.type === 'roof' && quoteItems.some(function(i){ return i.product.cat === 'Roofing'; })) {
+    autoQuoteRoof();
+  }
 }
 
 // ============================================================
@@ -2692,13 +2703,14 @@ function applyEV(id) {
 function applyEVRoof(s) {
   const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
 
-  // Waste factor — set EagleView's recommended waste automatically on every apply (rep can change after).
-  // EagleView's measurement feed doesn't carry the suggested-waste % in its summary attributes (that lives
-  // in the report's waste table / PDF), so we (1) use a real waste field if a future report ever includes one,
-  // else (2) derive the recommendation the same way EagleView does — from roof complexity & cut-up.
+  // Waste factor — use EagleView/SumoQuote's suggested % when the report carries one, otherwise
+  // default to 10%. (The suggested % lives in the report's waste table, not the summary feed we get
+  // today, so until the edge function is wired to pass it through this resolves to the 10% default.)
+  // The rep can bump it in the Waste Factor dropdown, which re-applies to every estimate.
   let evPct = evNum(s.SuggestedWastePercent) ?? evNum(s.WastePercent) ?? evNum(s.SuggestedWaste);
+  const evHadWaste = evPct != null;
   if (evPct != null && evPct <= 2) evPct = evPct * 100; // normalize 0.10 -> 10
-  if (evPct == null) evPct = recommendedWastePct(s);
+  if (evPct == null) evPct = 10; // business default
   {
     const factor = 1 + evPct / 100;
     const sel = document.getElementById('roofWaste');
@@ -2729,7 +2741,7 @@ function applyEVRoof(s) {
   set('gutterLF', evNum(s.TotalEavesLength)); // gutters run along the eaves
 
   const dripLF = (eave || 0) + (evNum(s.TotalRakesLength) || 0);
-  evStatus('✅ Roof measurements applied: waste set to EagleView\'s recommended ' + Math.round(evPct) + '% (editable), drip edge = eaves + rakes (' + Math.round(dripLF) + ' LF), Ice &amp; Water = eaves × 2, valleys + step flashing combined. Adjust any field as needed.', '#1a7a2e');
+  evStatus('✅ Roof measurements applied: waste set to ' + Math.round(evPct) + '% ' + (evHadWaste ? '(EagleView-suggested)' : '(default — editable)') + ', drip edge = eaves + rakes (' + Math.round(dripLF) + ' LF), Ice &amp; Water = eaves × 2, valleys + step flashing combined. Adjust any field as needed.', '#1a7a2e');
 }
 
 function applyEVSiding(s, roofSummary) {
@@ -2778,6 +2790,12 @@ function calcSidingSQ() {
 // ============================================================
 // AUTO-QUOTE — ROOF (template-aware)
 // ============================================================
+// Hip/ridge cap is cut from field shingles at roughly 20 LF per bundle (3 bundles = 1 square),
+// i.e. ~60 LF of cap per square. We fold that into the shingle count (SumoQuote-style) instead of
+// billing a separate cap line — validated to match SumoQuote exactly on 196 Linden (20 SQ) and
+// 116 S Maple (45 SQ). Change this one number to re-tune the cap allowance.
+const CAP_LF_PER_SQ = 60;
+
 function autoQuoteRoof() {
   if (!roofSQ) { alert('Please enter roof square footage first.'); return; }
   quoteItems = quoteItems.filter(i => i.product.cat !== 'Roofing');
@@ -2791,24 +2809,25 @@ function autoQuoteRoof() {
   const iceWaterLF = parseFloat(document.getElementById('iceWaterLF').value) || 0;
   const waste = parseFloat(document.getElementById('roofWaste')?.value) || 1.18;
 
-  // Main shingles
-  const mainId = activeTemplate && activeTemplate.type === 'roof' ? activeTemplate.mainProductId : 'gafhz';
-  addItemDirect(mainId, roofSQ);
+  // Dimension map first (Metal skips drip/starter/ice&water/ridge — its dimItems are only valley + gutter).
+  const dims = (activeTemplate && activeTemplate.type === 'roof' && activeTemplate.dimItems)
+    ? activeTemplate.dimItems
+    : { ridgeLF:'ridge', eaveLF:['f9748aee','leading'], iceWaterLF:'icewater', valleyLF:'step', gutterLF:'gutter5' };
 
-  // Pitch surcharge
+  // Main shingles — for shingle templates (GAF/IKO), fold the hip/ridge cap into the shingle
+  // square count and round up to a whole square. No separate ridge cap line. Metal is left as-is.
+  const mainId = activeTemplate && activeTemplate.type === 'roof' ? activeTemplate.mainProductId : 'gafhz';
+  const mainQty = (dims.ridgeLF && ridgeLF > 0) ? Math.ceil(roofSQ + ridgeLF / CAP_LF_PER_SQ) : roofSQ;
+  addItemDirect(mainId, mainQty);
+
+  // Pitch surcharge (on roof-deck area, not cap)
   if (pitchSurcharge === 30) addItemDirect('steep1', roofSQ);
   if (pitchSurcharge === 40) addItemDirect('steep2', roofSQ);
 
   // Extra layer
   if (layers > 0) addItemDirect('extra', roofSQ);
 
-  // Dimension-based items — driven by this template's dimItems so Metal skips
-  // drip/starter/ice&water/ridge (its dimItems only include valley + gutter).
-  const dims = (activeTemplate && activeTemplate.type === 'roof' && activeTemplate.dimItems)
-    ? activeTemplate.dimItems
-    : { ridgeLF:'ridge', eaveLF:['f9748aee','leading'], iceWaterLF:'icewater', valleyLF:'step', gutterLF:'gutter5' };
-
-  if (dims.ridgeLF && ridgeLF > 0) addItemDirect(dims.ridgeLF, Math.ceil(ridgeLF / 4)); // Ridge Vent & Cap priced per 4-ft piece
+  // Dimension-based items. Hip/ridge cap is folded into the shingle line above (no separate cap product).
   if (dims.eaveLF && (eaveLF > 0 || rakeLF > 0)) {
     const [dripId, starterId] = Array.isArray(dims.eaveLF) ? dims.eaveLF : [dims.eaveLF, null];
     if (dripId && (eaveLF + rakeLF) > 0) addItemDirect(dripId, Math.round(eaveLF + rakeLF));   // Fix #1: drip edge = eaves + rakes
@@ -2891,9 +2910,14 @@ function addItemDirect(id, qty) {
 function addProduct(id) {
   const p = PRODUCTS.find(x => x.id === id);
   if (!p) return;
-  // In the 3-tier comparison build phase, add the selected product to ALL three tiers.
+  // In the 3-tier comparison build phase, add the selected product to ALL tiers —
+  // except GAF-only upgrades (e.g. the Master Elite warranty), which only belong on a GAF tier.
   if (activeTemplate && (activeTemplate.isComparison || activeTemplate.type === 'alside_comparison') && alsideTiers) {
     Object.keys(alsideTiers).forEach(tierKey => {
+      if (GAF_ONLY_PRODUCTS.has(id)) {
+        const tier = (activeTemplate.tiers || []).find(t => t.key === tierKey);
+        if (!tier || !GAF_SHINGLE_IDS.has(tier.mainProductId)) return; // skip non-GAF options
+      }
       const arr = alsideTiers[tierKey];
       const existing = arr.find(i => i.product.id === id);
       if (existing) { existing.qty += 1; }
