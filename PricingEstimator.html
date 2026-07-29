@@ -3984,6 +3984,33 @@ function buildFullPDFHtml() {
   const initBox = () => `<div class="initials-bar">I acknowledge that I have read and understand this page.&nbsp;&nbsp;Initials:&nbsp;<span class="init-line"></span></div>`;
   const alsideInitBox = (tierIdx) => `<div class="initials-bar">I am selecting this option.&nbsp;&nbsp;Initials:&nbsp;<span class="init-line init-alside-tier" data-alside-tier="${tierIdx}"></span></div>`;
 
+  // Sunlight-style financing box: brand + "Fixed APR of X% for Y months" on the left,
+  // a divided "est. $X/mo" panel on the right — mirrors how Sunlight Financial presents it.
+  const sunlightFinBox = (provName, rate, termYears, mo) => {
+    const months  = Math.round((parseFloat(termYears) || 0) * 12);
+    const rateNum = parseFloat(rate) || 0;
+    const isSun   = /sunlight/i.test(provName || '');
+    const terms   = rateNum > 0
+      ? ('Fixed APR of ' + rateNum + '%' + (months ? ' for ' + months + ' months' : ''))
+      : (months ? (months + '-month term') : '');
+    const brand = isSun
+      ? `<span style="display:inline-flex;align-items:center;gap:8px">
+           <svg width="27" height="27" viewBox="0 0 100 100" style="flex-shrink:0"><defs><linearGradient id="slg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F7B733"/><stop offset="1" stop-color="#E8820C"/></linearGradient></defs><circle cx="50" cy="50" r="48" fill="url(#slg)"/><path d="M30 62c9-3 14-11 11-22 8 5 20 4 27-3-3 11-11 16-21 15 6 5 6 13 2 21-4-8-11-11-19-11z" fill="#fff"/></svg>
+           <span style="font-size:16px;font-weight:700;color:#2b2b2b;letter-spacing:-.3px">Sunlight Financial<sup style="font-size:8px">&reg;</sup></span>
+         </span>`
+      : `<span style="font-size:15px;font-weight:700;color:#1a3a5c">${h(provName || 'Financing')}</span>`;
+    const moPanel = (mo !== null && mo !== undefined)
+      ? `<div style="text-align:center;padding-left:16px;border-left:1px solid #e0e5ec;min-width:118px">
+           <div style="font-size:11px;font-weight:700;color:#2b2b2b">est.</div>
+           <div style="font-size:25px;font-weight:800;color:#111;line-height:1.05">${fmt$(mo)}<span style="font-size:12px;font-weight:700">/mo</span></div>
+         </div>`
+      : `<div style="text-align:center;padding-left:16px;border-left:1px solid #e0e5ec;min-width:118px;font-size:12px;color:#888">Contact<br>provider</div>`;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid #d8dee6;border-radius:8px;padding:12px 16px;margin-top:10px">
+        <div style="flex:1">${brand}<div style="font-size:12px;color:#555;margin-top:6px">${terms}</div></div>
+        ${moPanel}
+      </div>`;
+  };
+
   /* ── Item rows (Description / Qty — no prices shown) ── */
   const colorRows = colors.map(c =>
     `<tr><td class="dc">${h(c.label)}: <strong>${h(c.value)}</strong></td><td class="qc"></td></tr>`
@@ -3994,12 +4021,9 @@ function buildFullPDFHtml() {
   }).join('');
 
   /* ── Financing boxes (one per selected plan) ── */
-  const finBox = (useFinancing && _contractSelPlans.length) ? _contractSelPlans.map(({ prov, pl, mo }) => `
-    <div class="fin-box">
-      <div class="fin-name">${h(prov.name)}</div>
-      <div class="fin-plan">${h(pl.description || '')}</div>
-      <div class="fin-mo">${mo !== null ? 'est. ' + fmt$(mo) + '/mo' : 'Contact provider'}</div>
-    </div>`).join('') : '';
+  const finBox = (useFinancing && _contractSelPlans.length)
+    ? _contractSelPlans.map(({ prov, pl, mo }) => sunlightFinBox(prov.name, pl.rate, pl.term_years, mo)).join('')
+    : '';
 
   /* ════════════════════════════════════════════════════════
      PAGE 1 — COVER
@@ -4392,9 +4416,7 @@ function buildFullPDFHtml() {
       const tierFinanced = Math.max(0, tierSub - down);
       const tierFinBox = (useFinancing && _contractSelPlans.length) ? _contractSelPlans.map(function(pp) {
         const mo = calcPlanMonthly(pp.pl, tierFinanced);
-        return '<div class="fin-box"><div class="fin-name">' + h(pp.prov.name) + '</div>'
-          + '<div class="fin-plan">' + h(pp.pl.description || '') + '</div>'
-          + '<div class="fin-mo">' + (mo !== null ? 'est. ' + fmt$(mo) + '/mo' : 'Contact provider') + '</div></div>';
+        return sunlightFinBox(pp.prov.name, pp.pl.rate, pp.pl.term_years, mo);
       }).join('') : '';
       return pg(
         '<h2 class="sec-title">' + h(tier.name) + '</h2>'
