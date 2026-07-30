@@ -409,6 +409,8 @@
     <div class="card">
       <h3>🎯 Job Template</h3>
       <div id="templateGrid"><div style="font-size:12px;color:#999;padding:8px 0">Loading templates…</div></div>
+      <button type="button" onclick="openComboPicker()" style="width:100%;margin-top:8px;padding:8px;border:1px dashed #2d6a9f;background:#f2f7fd;color:#1a3a5c;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">🧩 Combo — add another trade</button>
+      <div id="comboBar" style="display:none;margin-top:8px"></div>
       <div id="colorFieldsContainer" style="display:none"></div>
       <div id="autoQuoteBar" style="display:none;margin-top:10px">
         <button class="btn btn-green" style="width:100%;font-size:14px;padding:10px" onclick="runAutoQuote()">⚡ Auto-Quote from Template</button>
@@ -484,7 +486,7 @@
         </button>
         <div id="evRoofStatus" style="display:none;font-size:12px;line-height:1.5;margin:0 0 10px;padding:8px 10px;border-radius:6px;background:#f6f8fa"></div>
         <div class="dim-grid">
-          <div class="dim-field"><label>Total Sq Ft of Roof</label><input type="number" id="roofSqft" placeholder="e.g. 2400" oninput="calcRoofSQ()"></div>
+          <div class="dim-field"><label>Shingle Roof Area <span style="font-weight:400;color:#90a0b3">(sq ft)</span></label><input type="number" id="roofSqft" placeholder="e.g. 2400" oninput="calcRoofSQ()"></div>
           <div class="dim-field">
             <label>Waste Factor</label>
             <select id="roofWaste" onchange="onWasteChange()">
@@ -493,6 +495,10 @@
               <option value="1.15">15%</option>
               <option value="1.18">18%</option>
             </select>
+          </div>
+          <div class="dim-field">
+            <label>Low-Slope Area <span style="font-weight:400;color:#90a0b3">(&lt;2/12, sq ft)</span></label>
+            <input type="number" id="lowSlopeSqft" placeholder="0" value="0" oninput="onWasteChange()">
           </div>
           <div class="dim-field">
             <label>Stories <span style="font-weight:400;color:#90a0b3">(labor only)</span></label>
@@ -662,7 +668,10 @@
 
     <!-- Quote Items -->
     <div class="card">
-      <h3>📝 Quote Line Items</h3>
+      <div style="display:flex;align-items:center;gap:10px">
+        <h3 style="margin:0">📝 Quote Line Items</h3>
+        <button type="button" onclick="openComboPicker()" title="Add another trade to this estimate (combo)" style="width:26px;height:26px;border-radius:50%;border:1px solid #2d6a9f;background:#eef4ff;color:#1a3a5c;font-size:17px;font-weight:800;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
+      </div>
       <div id="quoteItems">
         <div class="empty-state"><div class="icon">📋</div><p>Select a template and click Auto-Quote, or add products manually above.</p></div>
       </div>
@@ -687,28 +696,22 @@
           <div class="total-row"><span>Subtotal</span><span id="totalSub">$0.00</span></div>
           <div class="total-row"><span>Tax (applicable)</span><span id="totalTax">$0.00</span></div>
 
-          <!-- DISCOUNT INPUTS -->
+          <!-- DISCOUNTS (multi-line, named) -->
           <div style="margin:8px 0 4px;border-top:1px dashed #d0d9e8;padding-top:8px">
-            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:5px">Discount (optional)</div>
-            <div style="display:flex;gap:6px">
-              <div style="flex:1">
-                <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:2px">$ Amount</div>
-                <input type="number" id="discountDollar" min="0" step="0.01" placeholder="0.00"
-                  style="width:100%;padding:5px 7px;border:1px solid var(--border);border-radius:5px;font-size:12px;color:#c0392b;font-weight:600;background:#fafcff"
-                  oninput="applyDiscountDollar()">
-              </div>
-              <div style="flex:1">
-                <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:2px">% Percent</div>
-                <input type="number" id="discountPercent" min="0" max="100" step="0.1" placeholder="0"
-                  style="width:100%;padding:5px 7px;border:1px solid var(--border);border-radius:5px;font-size:12px;color:#c0392b;font-weight:600;background:#fafcff"
-                  oninput="applyDiscountPercent()">
-              </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+              <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">Discounts</span>
+              <span id="discountLockNote" style="display:none;font-size:10px;color:#b02020;font-weight:700">🔒 Signed — locked</span>
+            </div>
+            <div id="discountLinesBox"></div>
+            <div id="discountBtns" style="display:flex;gap:6px;margin-top:4px">
+              <button type="button" onclick="addDiscountLine(false)" style="flex:1;font-size:11px;padding:5px;border:1px dashed #c8d0dc;border-radius:5px;background:#fff;color:#1a3a5c;cursor:pointer;font-weight:600">+ Add Discount</button>
+              <button type="button" id="mgrDiscountBtn" onclick="addDiscountLine(true)" style="display:none;flex:1;font-size:11px;padding:5px;border:1px dashed #e0b46a;border-radius:5px;background:#fffdf5;color:#8a5a00;cursor:pointer;font-weight:600">+ Manager Discount</button>
             </div>
           </div>
 
           <!-- DISCOUNT DISPLAY ROW (hidden until discount > 0) -->
           <div class="total-row" id="discountRow" style="display:none;color:#c0392b">
-            <span style="font-weight:600">Discount</span>
+            <span style="font-weight:600">Total Discount</span>
             <span id="totalDiscount" style="font-weight:700">−$0.00</span>
           </div>
 
@@ -722,6 +725,7 @@
         <button class="btn btn-outline" onclick="saveQuote()">💾 Save</button>
         <button class="btn btn-outline" onclick="loadQuote()">📂 My Quotes</button>
         <button class="btn btn-outline" onclick="clearQuote()">+ New Quote</button>
+        <button class="btn btn-outline" style="color:#b02020;border-color:#e0b4b4" onclick="printCancellationAgreement()">🚫 Cancellation Agreement</button>
       </div>
     </div>
 
@@ -735,6 +739,16 @@
     </div>
 
     <!-- ── Send for Signature Modal ────────────────────────── -->
+    <!-- ── Combo picker modal (add another trade to the estimate) ── -->
+    <div id="comboPickerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:12px;padding:24px;max-width:440px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3);position:relative;max-height:80vh;overflow:auto">
+        <button onclick="closeComboPicker()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#888">&times;</button>
+        <h3 style="margin:0 0 4px;color:#1a3a5c;font-size:17px">🧩 Add a trade to this estimate</h3>
+        <p style="font-size:12px;color:#666;margin:0 0 16px">Pick another template — its line items are added alongside what's already here, in one combined estimate.</p>
+        <div id="comboPickerList"></div>
+      </div>
+    </div>
+
     <div id="sendModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center">
       <div style="background:#fff;border-radius:12px;padding:32px;max-width:480px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3);position:relative">
         <button onclick="closeSendModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#888">&times;</button>
@@ -1415,6 +1429,7 @@ function hideSatPreview() {
 let filteredProducts = [...PRODUCTS];
 let activeCategory = 'All';
 let activeTemplate = null;
+let comboTemplates = [];   // trades combined into one estimate (roof + siding + windows …)
 let colorSelections = {};
 let discountAmt     = 0;   // dollar amount of discount applied
 let _pendingLoadId    = null;  // quote ID to load after data is ready
@@ -1422,6 +1437,8 @@ let _pendingAutoPrint = false; // auto-trigger print after load (from ?autoprint
 let allFinProviders    = [];   // loaded from DB
 let selectedProviderId = null;
 let selectedPlanIds    = new Set(); // multi-select: set of planId strings
+let discountLines      = [];   // [{label, value, type:'dollar'|'percent', manager:bool}] — summed into discountAmt
+let _quoteSigned       = false; // true when the loaded estimate is already signed (discounts locked)
 
 // ── Photo state ───────────────────────────────────────────────
 let quotePhotos = [];  // array of { id, url, filename, caption, sort_order, notes }
@@ -1660,6 +1677,7 @@ function updateAuthUI(session) {
       const MARGIN_ROLES = ['admin','super_admin','platform_owner','director'];
       if (ADMIN_ROLES.includes(role)) adminBtn.style.display = 'inline-block';
       if (MARGIN_ROLES.includes(role)) window._peShowMargin = true;
+      if (typeof refreshDiscountUI === 'function') refreshDiscountUI(); // reveal Manager Discount for admin/director
     }).catch(() => {});
   } else {
     gate.style.display      = 'flex';
@@ -1712,17 +1730,96 @@ function selectTemplate(id) {
     } else {
       isAlsideComparison = false;
       alsideTiers = null;
-      setProjectType(activeTemplate.type === 'siding' ? 'siding' : 'roof');
+      const t = activeTemplate.type || 'roof';
+      // Roof/siding have measurements + an Auto-Quote bar; windows/doors/gutters are added
+      // from the product list, so hide the measurement bar for those.
+      const hasMeasurements = (t === 'roof' || t === 'siding' || t === 'both');
+      setProjectType(t === 'siding' ? 'siding' : (t === 'roof' || t === 'both' ? 'roof' : t));
       buildColorFields();
-      if (bar) bar.style.display = 'block';
+      if (bar) bar.style.display = hasMeasurements ? 'block' : 'none';
       if (alsideSection) alsideSection.style.display = 'none';
+      comboTemplates = [activeTemplate];   // single-trade baseline; the + / Combo button adds more
     }
   } else {
     isAlsideComparison = false;
     alsideTiers = null;
+    comboTemplates = [];
     if (bar) bar.style.display = 'none';
     if (alsideSection) alsideSection.style.display = 'none';
   }
+  renderComboBar();
+}
+
+// ============================================================
+// COMBO ESTIMATES — quote multiple trades (roof + siding + windows …) in one estimate
+// ============================================================
+// Add another trade to the current estimate. Preserves existing line items and colors, switches the
+// sidebar to the new trade's context so the rep can enter its measurements / add its products.
+function addToCombo(id) {
+  const tpl = TEMPLATES[id];
+  if (!tpl) return;
+  if (tpl.isComparison || tpl.type === 'alside_comparison' || tpl.type === 'roof_comparison') {
+    alert('Comparison templates can\'t be added to a combo. Add single-option templates instead.');
+    return;
+  }
+  closeComboPicker();
+  activeTemplate = tpl;
+  isAlsideComparison = false;
+  if (alsideTiers) alsideTiers = null;
+  if (!comboTemplates.some(t => t.id === tpl.id)) comboTemplates.push(tpl);
+  // Highlight the active card
+  document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('active'));
+  const card = document.getElementById('tpl-' + id); if (card) card.classList.add('active');
+  const st = document.getElementById('statusTemplate'); if (st) st.textContent = '🧩 Combo — ' + comboTemplates.map(t => t.label).join(' + ');
+  const t = tpl.type || 'roof';
+  const hasMeasurements = (t === 'roof' || t === 'siding' || t === 'both');
+  setProjectType(t === 'siding' ? 'siding' : (t === 'roof' || t === 'both' ? 'roof' : t));
+  buildColorFields();                        // shows THIS trade's color fields; colorSelections persists across trades
+  const bar = document.getElementById('autoQuoteBar');
+  if (bar) bar.style.display = hasMeasurements ? 'block' : 'none';
+  const alsideSection = document.getElementById('alsideSection'); if (alsideSection) alsideSection.style.display = 'none';
+  renderComboBar();
+  renderScopePreview();
+}
+
+function removeFromCombo(id) {
+  comboTemplates = comboTemplates.filter(t => t.id !== id);
+  if (activeTemplate && activeTemplate.id === id) activeTemplate = comboTemplates[comboTemplates.length - 1] || null;
+  if (activeTemplate) { buildColorFields(); }
+  renderComboBar();
+  renderScopePreview();
+}
+
+// A small chip bar under the template list showing the trades in the current combo.
+function renderComboBar() {
+  const el = document.getElementById('comboBar');
+  if (!el) return;
+  if (!comboTemplates || comboTemplates.length < 2) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'block';
+  el.innerHTML = '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7a90;margin-bottom:4px">🧩 Combo — ' + comboTemplates.length + ' trades</div>'
+    + comboTemplates.map(t => `<span onclick="activeTemplateSwitch('${t.id}')" style="display:inline-flex;align-items:center;gap:5px;background:#eef4ff;border:1px solid #b8d0f0;color:#1a3a5c;border-radius:12px;padding:2px 8px;margin:0 4px 4px 0;font-size:11px;font-weight:600;cursor:pointer">${escHtmlPE(t.label)}<button onclick="event.stopPropagation();removeFromCombo('${t.id}')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:13px;line-height:1;padding:0">×</button></span>`).join('');
+}
+// Switch the sidebar focus to an already-added combo trade (to enter its measurements / colors).
+function activeTemplateSwitch(id) {
+  const tpl = comboTemplates.find(t => t.id === id) || TEMPLATES[id];
+  if (tpl) addToCombo(id);
+}
+
+function openComboPicker() {
+  const modal = document.getElementById('comboPickerModal');
+  const list = document.getElementById('comboPickerList');
+  if (!modal || !list) return;
+  const groups = { roof: 'Roofing', siding: 'Siding', windows: 'Windows', doors: 'Doors', gutters: 'Gutters', both: 'Other' };
+  const items = Object.values(TEMPLATES).filter(t => t && !t.isComparison && t.type !== 'alside_comparison' && t.type !== 'roof_comparison');
+  list.innerHTML = items.map(t => {
+    const inCombo = comboTemplates.some(c => c.id === t.id);
+    return `<button onclick="addToCombo('${t.id}')" ${inCombo ? 'disabled' : ''} style="display:block;width:100%;text-align:left;padding:9px 12px;margin-bottom:6px;border:1px solid ${inCombo ? '#cbd5e1' : '#c8d0dc'};border-radius:7px;background:${inCombo ? '#f1f5f9' : '#fff'};color:${inCombo ? '#94a3b8' : '#1a3a5c'};font-size:13px;font-weight:600;cursor:${inCombo ? 'default' : 'pointer'}">${escHtmlPE(t.label || t.name)} <span style="font-size:11px;color:#90a0b3">— ${groups[t.type] || t.type}${inCombo ? ' ✓ added' : ''}</span></button>`;
+  }).join('');
+  modal.style.display = 'flex';
+}
+function closeComboPicker() {
+  const modal = document.getElementById('comboPickerModal');
+  if (modal) modal.style.display = 'none';
 }
 
 // ============================================================
@@ -1790,6 +1887,10 @@ function autoFillRoofTier(tierKey) {
   // rounded up to a whole square. Metal (no dims.ridgeLF) stays at plain roof squares.
   const mainQty = (dims.ridgeLF && ridgeLF > 0) ? Math.ceil(roofSQ + ridgeLF / CAP_LF_PER_SQ) : roofSQ;
   push(tier.mainProductId, mainQty);
+
+  // Low-slope area → Peel & Seal membrane (shingles / metal aren't rated below 2/12)
+  const lowSlopeSqft = parseFloat(document.getElementById('lowSlopeSqft')?.value) || 0;
+  if (lowSlopeSqft > 0) push(LOW_SLOPE_PRODUCT, Math.ceil(lowSlopeSqft / 100 * 10) / 10);
 
   const pi = tier.pitchItems || {};
   if (pitchSurcharge === 30 && pi[30]) push(pi[30], roofSQ);
@@ -1954,8 +2055,8 @@ async function saveQuote() {
     color_selections:   colorSelections,
     totals:             { subtotal: preDisc, discount: discountAmt, grand },
     notes:              notes,
-    dimension_data:     { roofSQ, sidingSQ, pitchSurcharge },
-    payment_data:       { down, useFinancing, discountAmt, selectedPlanIds: [...selectedPlanIds] },
+    dimension_data:     { roofSQ, sidingSQ, pitchSurcharge, comboTemplateIds: comboTemplates.map(t => t.id) },
+    payment_data:       { down, useFinancing, discountAmt, discountLines, selectedPlanIds: [...selectedPlanIds] },
     satellite_image_url: satelliteImgUrl || null,
     comparison_tiers:   alsideTiers || null,
   };
@@ -2154,12 +2255,20 @@ async function loadQuoteById(id) {
   // Payment data
   if (q.payment_data) {
     discountAmt = q.payment_data.discountAmt || 0;
+    // Restore discount lines; fall back to a single line if an older quote only stored a dollar amount.
+    discountLines = Array.isArray(q.payment_data.discountLines) ? q.payment_data.discountLines
+      : (discountAmt > 0 ? [{ label: 'Discount', value: discountAmt, type: 'dollar', manager: false }] : []);
     setVal('moneyDown',      q.payment_data.down || '');
-    setVal('discountDollar', discountAmt || '');
     const finEl = document.getElementById('useFinancing');
     if (finEl) { finEl.checked = q.payment_data.useFinancing || false; toggleFinancing(); }
     selectedPlanIds = new Set(q.payment_data.selectedPlanIds || []);
+  } else {
+    discountLines = [];
   }
+  // Lock discounts if this saved estimate is already signed.
+  _quoteSigned = ['signed', 'complete', 'completed'].includes(String(q.signing_status || q.status || '').toLowerCase());
+  refreshDiscountUI();
+  recalcDiscounts();
 
   // Satellite image
   if (q.satellite_image_url) {
@@ -2189,6 +2298,12 @@ async function loadQuoteById(id) {
       renderComparisonCards(activeTemplate);
       renderAlsideTiers();
     }
+  }
+  // Restore combo trades (multiple templates in one estimate)
+  const _comboIds = (q.dimension_data && q.dimension_data.comboTemplateIds) || [];
+  if (_comboIds.length > 1) {
+    comboTemplates = _comboIds.map(cid => TEMPLATES[cid]).filter(Boolean);
+    if (typeof renderComboBar === 'function') renderComboBar();
   }
   colorSelections = q.color_selections || {};
   Object.keys(colorSelections).forEach(key => {
@@ -2753,7 +2868,22 @@ function applyEVRoof(s) {
     }
   }
 
-  if (s.TotalRoofArea != null) { set('roofSqft', Math.round(evNum(s.TotalRoofArea))); if (typeof calcRoofSQ === 'function') calcRoofSQ(); }
+  // Split roof area by pitch: asphalt shingles cover >= 2/12; genuinely low-slope area (< 2/12)
+  // is pulled out into a separate Peel & Seal line since shingles aren't rated for it.
+  let steepArea = 0, lowArea = 0, hadPerPitch = false;
+  Object.keys(s).forEach(k => {
+    const mp = k.match(/^RoofAreaPerPitch:(\d+)\/12$/);
+    if (mp) { hadPerPitch = true; const pitch = parseInt(mp[1], 10); const a = evNum(s[k]) || 0;
+      if (pitch < LOW_SLOPE_MAX_PITCH) lowArea += a; else steepArea += a; }
+  });
+  if (hadPerPitch && (steepArea + lowArea) > 0) {
+    set('roofSqft', Math.round(steepArea));
+    set('lowSlopeSqft', Math.round(lowArea));
+  } else if (s.TotalRoofArea != null) {
+    set('roofSqft', Math.round(evNum(s.TotalRoofArea)));
+    set('lowSlopeSqft', 0);
+  }
+  if (typeof calcRoofSQ === 'function') calcRoofSQ();
   if (s.PredominantPitch) { const p = parseInt(String(s.PredominantPitch), 10); if (!isNaN(p)) { const idx = p >= 11 ? 2 : (p >= 7 ? 1 : 0); const b = document.querySelectorAll('.pitch-btn'); if (b[idx]) b[idx].click(); } }
 
   set('ridgeLF', evNum(s.TotalHipsandRidgesLength));
@@ -2837,6 +2967,11 @@ const STARTER_WASTE = 1.18;
 const DRIP_STICK_FT = 10;
 const dripEdgeQty = (eaveLF, rakeLF) => Math.ceil((eaveLF + rakeLF) / DRIP_STICK_FT) * DRIP_STICK_FT;
 
+// Roof pitches BELOW this (in x/12) can't take asphalt shingles and get low-slope membrane instead.
+// 2 means: 2/12 and steeper are shingled (matches code + SumoQuote); 1/12 and flatter are low-slope.
+const LOW_SLOPE_MAX_PITCH = 2;
+const LOW_SLOPE_PRODUCT   = 'pealnseal'; // Peel & Seal Flat Roof ($/SQ) for the low-slope area
+
 function autoQuoteRoof() {
   if (!roofSQ) { alert('Please enter roof square footage first.'); return; }
   quoteItems = quoteItems.filter(i => i.product.cat !== 'Roofing');
@@ -2860,6 +2995,10 @@ function autoQuoteRoof() {
   const mainId = activeTemplate && activeTemplate.type === 'roof' ? activeTemplate.mainProductId : 'gafhz';
   const mainQty = (dims.ridgeLF && ridgeLF > 0) ? Math.ceil(roofSQ + ridgeLF / CAP_LF_PER_SQ) : roofSQ;
   addItemDirect(mainId, mainQty);
+
+  // Low-slope area → Peel & Seal membrane (asphalt shingles / metal panels aren't rated below 2/12)
+  const lowSlopeSqft = parseFloat(document.getElementById('lowSlopeSqft')?.value) || 0;
+  if (lowSlopeSqft > 0) addItemDirect(LOW_SLOPE_PRODUCT, Math.ceil(lowSlopeSqft / 100 * 10) / 10);
 
   // Pitch surcharge (on roof-deck area, not cap)
   if (pitchSurcharge === 30) addItemDirect('steep1', roofSQ);
@@ -3566,44 +3705,69 @@ function getGrandTotal() {
 // e.g. 5.2635 → "5.2635", 5.0 → "5", 10.5 → "10.5"
 function fmtPct(v) { return parseFloat(v.toFixed(4)).toString(); }
 
-// ── Discount handlers ────────────────────────────────────────
-function applyDiscountDollar() {
-  const preDisc = getPreDiscountTotal();
-  const _capRole = ['user','rep'].includes(window._peUserRole);
-  const maxDisc = _capRole ? preDisc * 0.15 : preDisc;
-  const d = Math.max(0, Math.min(parseFloat(document.getElementById('discountDollar').value) || 0, maxDisc));
-  if (_capRole && parseFloat(document.getElementById('discountDollar').value) > maxDisc) {
-    document.getElementById('discountDollar').value = d.toFixed(2);
-    _showToast('Discount capped at 15% for your role', '#c0392b');
-  }
-  discountAmt = d;
-  const pctEl = document.getElementById('discountPercent');
-  // Only sync percent if user isn't actively editing the percent field
-  if (pctEl && document.activeElement !== pctEl) {
-    pctEl.value = (preDisc > 0 && d > 0) ? fmtPct(d / preDisc * 100) : '';
-  }
+// ── Multi-line discounts ─────────────────────────────────────
+// discountLines is the source of truth; discountAmt stays the effective total so the rest of the
+// app (totals, payment, PDF) keeps working. Reps/users are capped at 15% of the pre-discount total;
+// admin/director are uncapped and can add a labeled "Manager Discount". Signed estimates are locked.
+function _canManagerDiscount() {
+  return ['admin','super_admin','platform_owner','director'].includes(window._peUserRole);
+}
+function addDiscountLine(isManager) {
+  if (_quoteSigned) { _showToast('This estimate is signed — discounts are locked.', '#b02020'); return; }
+  if (isManager && !_canManagerDiscount()) return;
+  discountLines.push({ label: isManager ? 'Manager Discount' : 'Discount', value: 0, type: 'dollar', manager: !!isManager });
+  renderDiscountLines();
+  recalcDiscounts();
+}
+function updateDiscountLine(idx, field, val) {
+  const ln = discountLines[idx];
+  if (!ln || _quoteSigned) return;
+  if (field === 'label') ln.label = val;
+  else if (field === 'value') ln.value = Math.max(0, parseFloat(val) || 0);
+  else if (field === 'type') ln.type = val;
+  recalcDiscounts();
+}
+function removeDiscountLine(idx) {
+  if (_quoteSigned) return;
+  discountLines.splice(idx, 1);
+  renderDiscountLines();
+  recalcDiscounts();
+}
+function recalcDiscounts() {
+  const pre = getPreDiscountTotal();
+  let total = 0;
+  discountLines.forEach(ln => { total += ln.type === 'percent' ? pre * (parseFloat(ln.value) || 0) / 100 : (parseFloat(ln.value) || 0); });
+  // Rep/user cap: total discount limited to 15% of the pre-discount total.
+  const isRep = ['user','rep'].includes(window._peUserRole);
+  const cap = isRep ? pre * 0.15 : pre;
+  if (total > cap) { total = cap; if (isRep) _showToast('Total discount capped at 15% for your role', '#c0392b'); }
+  discountAmt = Math.max(0, Math.min(total, pre));
   renderQuote();
 }
-
-function applyDiscountPercent() {
-  // Use the currently-displayed total as the base — this is the number the user sees on screen.
-  // getGrandTotal() = preDiscountTotal - existing discountAmt, which equals displayed TOTAL.
-  const base   = getGrandTotal();
-  const _capRole2 = ['user','rep'].includes(window._peUserRole);
-  const maxPct = _capRole2 ? 15 : 100;
-  let rawPct   = parseFloat(document.getElementById('discountPercent').value) || 0;
-  if (_capRole2 && rawPct > 15) {
-    document.getElementById('discountPercent').value = '15';
-    rawPct = 15;
-    _showToast('Discount capped at 15% for your role', '#c0392b');
-  }
-  const pct  = Math.max(0, Math.min(rawPct, maxPct));
-  discountAmt = base * pct / 100;
-  const dolEl = document.getElementById('discountDollar');
-  if (dolEl && document.activeElement !== dolEl) {
-    dolEl.value = discountAmt > 0 ? discountAmt.toFixed(2) : '';
-  }
-  renderQuote();
+function renderDiscountLines() {
+  const box = document.getElementById('discountLinesBox');
+  if (!box) return;
+  const locked = _quoteSigned;
+  box.innerHTML = discountLines.map((ln, i) => `
+    <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">
+      <input type="text" value="${escHtmlPE(ln.label)}" ${locked ? 'disabled' : ''} onchange="updateDiscountLine(${i},'label',this.value)" style="flex:1.4;min-width:0;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:11px${ln.manager ? ';background:#fffdf5' : ''}">
+      <input type="number" min="0" step="0.01" value="${ln.value || ''}" ${locked ? 'disabled' : ''} oninput="updateDiscountLine(${i},'value',this.value)" style="width:62px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:11px;color:#c0392b;font-weight:600">
+      <select ${locked ? 'disabled' : ''} onchange="updateDiscountLine(${i},'type',this.value)" style="width:42px;padding:4px 2px;border:1px solid var(--border);border-radius:4px;font-size:11px">
+        <option value="dollar" ${ln.type === 'dollar' ? 'selected' : ''}>$</option>
+        <option value="percent" ${ln.type === 'percent' ? 'selected' : ''}>%</option>
+      </select>
+      <button type="button" ${locked ? 'disabled' : ''} onclick="removeDiscountLine(${i})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:15px;line-height:1">×</button>
+    </div>`).join('');
+}
+// Show/hide the Manager Discount button (role) and lock state (signed); refresh the line list.
+function refreshDiscountUI() {
+  const mgrBtn = document.getElementById('mgrDiscountBtn');
+  if (mgrBtn) mgrBtn.style.display = _canManagerDiscount() ? '' : 'none';
+  const lock = document.getElementById('discountLockNote');
+  const btns = document.getElementById('discountBtns');
+  if (lock) lock.style.display = _quoteSigned ? '' : 'none';
+  if (btns) btns.style.display = _quoteSigned ? 'none' : 'flex';
+  renderDiscountLines();
 }
 
 function updatePaymentDisplay(grand) {
@@ -4018,6 +4182,9 @@ function buildFullPDFHtml() {
 
   const isRoofing = projectType === 'roof';   // state value is 'roof', not 'roofing' — this drives the title, T&C, and "what to expect" pages
   const isSiding  = projectType === 'siding';
+  const isWindows = projectType === 'windows';
+  const isDoors   = projectType === 'doors';
+  const _isCombo  = comboTemplates && comboTemplates.length > 1;   // multiple trades in one estimate
   const grand     = getGrandTotal();
   const financed  = Math.max(0, grand - down);
   const tpl       = activeTemplate;
@@ -4041,7 +4208,10 @@ function buildFullPDFHtml() {
   });
   const colors      = typeof getColorSummary === 'function' ? getColorSummary() : [];
   const fullAddr    = [custAddr, custCity, custZip].filter(Boolean).join(', ');
-  const docTitle    = _isCompare ? (isRoofing ? 'ROOFING ESTIMATE — OPTIONS' : 'SIDING QUOTE — OPTIONS') : (isRoofing ? 'ROOFING ESTIMATE' : 'SIDING QUOTE');
+  const docTitle    = _isCombo ? 'COMBO ESTIMATE'
+    : _isCompare
+    ? (isRoofing ? 'ROOFING ESTIMATE — OPTIONS' : 'SIDING QUOTE — OPTIONS')
+    : (isRoofing ? 'ROOFING ESTIMATE' : isSiding ? 'SIDING QUOTE' : isWindows ? 'WINDOW QUOTE' : isDoors ? 'DOOR QUOTE' : (tpl ? (tpl.label || tpl.name).toUpperCase() : 'ESTIMATE'));
   const tplName     = tpl ? tpl.name.toUpperCase() : (isRoofing ? 'ROOFING' : 'SIDING');
   const tplTimeline = tpl && tpl.timeline ? tpl.timeline : (isRoofing ? '6–8 weeks' : '10–16 weeks');
 
@@ -4253,20 +4423,21 @@ function buildFullPDFHtml() {
       <div style="font-size:11px;line-height:1.7;color:#1e2a38">${h(notes).replace(/\n/g,'<br>')}</div>
     </div>` : '';
 
+  const _tradeDescBlock = (t) => `
+    ${_isCombo ? `<div style="font-size:12px;font-weight:800;color:#1a3a5c;margin:12px 0 4px">${h((t.label || t.name || '').toUpperCase())}</div>` : ''}
+    ${t && t.description ? `<div style="font-size:11px;line-height:1.7;color:#1e2a38;background:#f8fafd;border-left:3px solid #1a3a5c;padding:10px 14px;border-radius:0 4px 4px 0;margin-bottom:4px">${h(t.description).replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>')}</div>` : ''}
+    ${_isCombo && t && t.warranty ? `<div style="margin:6px 0 4px;background:#eef2f8;border-radius:6px;padding:8px 12px;font-size:11px;line-height:1.5;color:#1e2a38"><strong style="text-transform:uppercase;font-size:10px;letter-spacing:.6px;color:#1a3a5c">Warranty:</strong> ${h(t.warranty)}</div>` : ''}`;
   const pgProduct = pg(`
     <h2 class="sec-title">SCOPE OF WORK</h2>
     <div style="display:flex;gap:6px;align-items:baseline;margin-bottom:4px">
-      <span style="font-size:13px;font-weight:800;color:#1a3a5c">${h(tplName)}</span>
+      <span style="font-size:13px;font-weight:800;color:#1a3a5c">${h(_isCombo ? 'COMBO — ' + comboTemplates.map(t => t.label || t.name).join(' + ') : tplName)}</span>
       <span style="font-size:10px;color:#6b7a90">— ${h(fullAddr)}</span>
     </div>
-    ${tpl && tpl.description ? `
-      <div style="font-size:11px;line-height:1.7;color:#1e2a38;background:#f8fafd;border-left:3px solid #1a3a5c;padding:10px 14px;border-radius:0 4px 4px 0;margin-bottom:4px">
-        ${h(tpl.description).replace(/\n\n/g,'</div><div style="font-size:11px;line-height:1.7;color:#1e2a38;background:#f8fafd;border-left:3px solid #1a3a5c;padding:10px 14px;border-radius:0 4px 4px 0;margin-top:8px">').replace(/\n/g,'<br>')}
-      </div>` : ''}
+    ${_isCombo ? comboTemplates.map(_tradeDescBlock).join('') : _tradeDescBlock(tpl || {})}
     ${colorTable}
     ${workList}
     ${notesSection}
-    ${tpl && tpl.warranty ? `
+    ${!_isCombo && tpl && tpl.warranty ? `
       <div style="margin:16px 0 0;background:#eef2f8;border-radius:6px;padding:10px 14px">
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.7px;color:#1a3a5c;margin-bottom:4px">Warranty</div>
         <div style="font-size:11px;line-height:1.6;color:#1e2a38">${h(tpl.warranty)}</div>
@@ -4281,7 +4452,14 @@ function buildFullPDFHtml() {
     <h2 class="sec-title">PRICING SUMMARY</h2>
     <div class="price-wrap">
       <table class="tot-table">
-        ${discountAmt > 0 ? `<tr><td class="tot-lbl" style="color:#c0392b">Discount Applied</td><td class="tot-val" style="color:#c0392b">(${fmt$(discountAmt)})</td></tr>` : ''}
+        ${(function(){
+          if (!(discountAmt > 0)) return '';
+          const pre = getPreDiscountTotal();
+          const lines = (discountLines || []).map(l => ({ label: l.label, amt: l.type === 'percent' ? pre * (parseFloat(l.value) || 0) / 100 : (parseFloat(l.value) || 0), pct: l.type === 'percent' ? l.value : null })).filter(l => l.amt > 0.005);
+          const sum = lines.reduce((s, l) => s + l.amt, 0);
+          if (lines.length && Math.abs(sum - discountAmt) < 0.5) return lines.map(l => `<tr><td class="tot-lbl" style="color:#c0392b">${h(l.label)}${l.pct != null ? ' (' + fmtPct(l.pct) + '%)' : ''}</td><td class="tot-val" style="color:#c0392b">(${fmt$(l.amt)})</td></tr>`).join('');
+          return `<tr><td class="tot-lbl" style="color:#c0392b">Discount Applied</td><td class="tot-val" style="color:#c0392b">(${fmt$(discountAmt)})</td></tr>`;
+        })()}
         <tr class="grand-row"><td><strong>TOTAL</strong></td><td><strong>${fmt$(grand)}</strong></td></tr>
       </table>
       ${finBox}
@@ -4684,6 +4862,53 @@ async function printQuote() {
   _patchQuoteStatus('sent');
 }
 
+// Termination of Agreement / Mutual Release — a printable cancellation form pre-filled from the
+// current estimate's customer + quote info, for signature.
+function printCancellationAgreement() {
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const name = g('custName') || '________________________';
+  const addr = g('custAddr');
+  const cityStateZip = [g('custCity'), [g('custState') || 'OH', g('custZip')].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const qnum = g('quoteNum') || '________';
+  const qdate = g('quoteDate') || '____________';
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Termination of Agreement — ${esc(name)}</title>
+  <style>
+    @page{size:letter;margin:0.9in}
+    body{font-family:'Times New Roman',Georgia,serif;font-size:13px;color:#111;line-height:1.75}
+    h1{font-size:20px;text-align:center;margin:0 0 2px;letter-spacing:.5px}
+    h2{font-size:14px;text-align:center;font-weight:600;color:#444;margin:0 0 26px}
+    .party{margin:4px 0}
+    ol{margin:18px 0;padding-left:22px} ol li{margin:11px 0}
+    .sig{margin-top:52px} .line{border-bottom:1px solid #111;display:inline-block;min-width:320px}
+    .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px}
+    .brand{font-size:16px;font-weight:800;color:#1a3a5c}
+  </style></head><body>
+  <div class="hdr"><div class="brand">RENEW HOME EXTERIORS</div><div style="font-size:11px;color:#555;text-align:right">1361 Wooster Rd W, Unit A<br>Barberton, OH 44203<br>(330) 208-9366</div></div>
+  <h1>TERMINATION OF AGREEMENT</h1>
+  <h2>Mutual Release &mdash; Cancellation of Order</h2>
+  <p>This Agreement is executed by and between the following:</p>
+  <p class="party"><strong>Renew Home Exteriors</strong><br>1361 Wooster Rd W, Unit A<br>Barberton, OH 44203</p>
+  <p>and</p>
+  <p class="party"><strong>${esc(name)}</strong><br>${esc(addr) || '&nbsp;'}<br>${esc(cityStateZip) || '&nbsp;'}</p>
+  <p>This agreement is entered into now by and between Renew Home Exteriors and <strong>${esc(name)}</strong>, collectively referred to as the &ldquo;Parties&rdquo; on the <strong>#${esc(qnum)}</strong> Estimate Agreement dated <strong>${esc(qdate)}</strong>.</p>
+  <ol>
+    <li>The Parties agree the <strong>#${esc(qnum)}</strong> Estimate agreement between them dated <strong>${esc(qdate)}</strong> shall be terminated effective ______________.</li>
+    <li>The Parties hereby release each other from all actions, causes of actions, liabilities or claims.</li>
+    <li>The Parties agree not to disparage Renew Home Exteriors, its products, services, agents, contractors or employees either verbally, in writing, or through electronic presence including but not limited to social media, blog posts, and/or forum posts.</li>
+  </ol>
+  <div class="sig">
+    <p>Signature: <span class="line"></span></p>
+    <p style="margin-top:22px">Print Name: <strong>${esc(name)}</strong></p>
+    <p style="margin-top:22px">Date: <span class="line" style="min-width:200px"></span></p>
+  </div>
+  </body></html>`;
+  const win = window.open('', '_blank');
+  if (!win) { alert('Please allow popups to open the cancellation agreement.'); return; }
+  win.document.write(html); win.document.close();
+  win.onload = function() { win.focus(); win.print(); };
+}
+
 /* ─── Change Orders viewer ───────────────────────────────── */
 function viewCOs(quoteId, customerName, evt) {
   if (evt) evt.stopPropagation();
@@ -4706,8 +4931,13 @@ function clearQuote() {
   isAlsideComparison = false;
   colorSelections = {};
   discountAmt = 0;
+  discountLines = [];
+  _quoteSigned = false;
+  if (typeof refreshDiscountUI === 'function') refreshDiscountUI();
   selectedPlanIds = [];
   activeTemplate = null;
+  comboTemplates = [];
+  if (typeof renderComboBar === 'function') renderComboBar();
   document.getElementById('quoteNumInput').value = '';
   document.getElementById('customerName').value = '';
   document.getElementById('customerAddress').value = '';
