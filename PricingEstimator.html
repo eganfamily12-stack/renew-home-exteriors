@@ -646,6 +646,13 @@
   <!-- MAIN -->
   <div class="main mob-hidden" id="mainPanel">
 
+    <!-- Estimate sheet tabs (each tab is a separate estimate for the same customer) -->
+    <div id="sheetTabsBar" class="no-print" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:10px;padding:6px;background:#eef2f8;border:1px solid #d8e0ec;border-radius:8px">
+      <span style="font-size:11px;font-weight:700;color:#6b7a90;text-transform:uppercase;letter-spacing:.5px;margin:0 4px">📑 Estimates</span>
+      <div id="sheetTabs" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap"></div>
+      <button type="button" onclick="addSheet()" title="New estimate sheet for this customer" style="width:26px;height:26px;border-radius:6px;border:1px solid #2d6a9f;background:#fff;color:#1a3a5c;font-size:16px;font-weight:800;line-height:1;cursor:pointer">+</button>
+    </div>
+
     <!-- Product Browser -->
     <div class="card no-print">
       <h3>🛒 Add Products to Quote</h3>
@@ -670,7 +677,7 @@
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px">
         <h3 style="margin:0">📝 Quote Line Items</h3>
-        <button type="button" onclick="openComboPicker()" title="Add another trade to this estimate (combo)" style="width:26px;height:26px;border-radius:50%;border:1px solid #2d6a9f;background:#eef4ff;color:#1a3a5c;font-size:17px;font-weight:800;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
+        <button type="button" onclick="addSheet()" title="Create a new estimate sheet for this customer (for comparison)" style="width:26px;height:26px;border-radius:50%;border:1px solid #2d6a9f;background:#eef4ff;color:#1a3a5c;font-size:17px;font-weight:800;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
       </div>
       <div id="quoteItems">
         <div class="empty-state"><div class="icon">📋</div><p>Select a template and click Auto-Quote, or add products manually above.</p></div>
@@ -1506,7 +1513,9 @@ window.onload = async function() {
     const doPrint = _pendingAutoPrint;
     _pendingLoadId    = null;
     _pendingAutoPrint = false;
-    loadQuoteById(id).then(() => { if (doPrint) printQuote(); });
+    loadQuoteById(id).then(() => { initSheets(); if (doPrint) printQuote(); });
+  } else {
+    initSheets();
   }
 };
 
@@ -1820,6 +1829,138 @@ function openComboPicker() {
 function closeComboPicker() {
   const modal = document.getElementById('comboPickerModal');
   if (modal) modal.style.display = 'none';
+}
+
+// ============================================================
+// ESTIMATE SHEETS — multiple estimates per customer (spreadsheet-style tabs)
+// Customer info (name/address/phone/email) is SHARED across sheets; each sheet holds its own
+// template/scope/items/measurements/discounts/totals so a rep can compare combo jobs side by side.
+// ============================================================
+let sheets = [];
+let activeSheetIdx = 0;
+const SHEET_INPUT_IDS = ['roofSqft','roofWaste','lowSlopeSqft','roofStories','roofLayers','ridgeLF','eaveLF','rakeLF','gutterLF','valleyLF','iceWaterLF','sidingSqft','sidingWaste','sidingCorners','fasciaLF','soffitSQ','mountBlocks','quoteNum','quoteDate','projectNotes','moneyDown'];
+
+function _cloneTiers(t) {
+  const o = {}; Object.keys(t || {}).forEach(k => { o[k] = (t[k] || []).map(i => ({ product: i.product, qty: i.qty, note: i.note || '' })); }); return o;
+}
+function captureSheet(forceName) {
+  const inputs = {};
+  SHEET_INPUT_IDS.forEach(id => { const el = document.getElementById(id); if (el) inputs[id] = el.value; });
+  return {
+    name: forceName || (sheets[activeSheetIdx] && sheets[activeSheetIdx].name) || ('Estimate ' + (activeSheetIdx + 1)),
+    templateId: activeTemplate ? activeTemplate.id : null,
+    comboTemplateIds: comboTemplates.map(t => t.id),
+    quoteItems: quoteItems.map(i => ({ product: i.product, qty: i.qty, note: i.note || '' })),
+    colorSelections: Object.assign({}, colorSelections),
+    alsideTiers: alsideTiers ? _cloneTiers(alsideTiers) : null,
+    isAlsideComparison: isAlsideComparison,
+    discountLines: (discountLines || []).map(l => Object.assign({}, l)),
+    selectedPlanIds: [...selectedPlanIds],
+    useFinancing: document.getElementById('useFinancing')?.checked || false,
+    projectType: projectType, pitchSurcharge: pitchSurcharge, roofSQ: roofSQ, sidingSQ: sidingSQ,
+    currentQuoteId: currentQuoteId, quotePhotos: quotePhotos.slice(), quoteSigned: _quoteSigned,
+    inputs: inputs
+  };
+}
+function blankSheet(name) {
+  return { name: name, templateId: null, comboTemplateIds: [], quoteItems: [], colorSelections: {},
+    alsideTiers: null, isAlsideComparison: false, discountLines: [], selectedPlanIds: [], useFinancing: false,
+    projectType: 'roof', pitchSurcharge: 0, roofSQ: 0, sidingSQ: 0, currentQuoteId: null, quotePhotos: [], quoteSigned: false, inputs: {} };
+}
+function restoreSheet(snap) {
+  activeTemplate     = snap.templateId ? (TEMPLATES[snap.templateId] || null) : null;
+  comboTemplates     = (snap.comboTemplateIds || []).map(id => TEMPLATES[id]).filter(Boolean);
+  quoteItems         = (snap.quoteItems || []).map(i => ({ product: i.product, qty: i.qty, note: i.note || '' }));
+  colorSelections    = snap.colorSelections || {};
+  alsideTiers        = snap.alsideTiers ? _cloneTiers(snap.alsideTiers) : null;
+  isAlsideComparison = !!snap.isAlsideComparison;
+  discountLines      = (snap.discountLines || []).map(l => Object.assign({}, l));
+  selectedPlanIds    = new Set(snap.selectedPlanIds || []);
+  projectType        = snap.projectType || 'roof';
+  pitchSurcharge     = snap.pitchSurcharge || 0;
+  roofSQ = snap.roofSQ || 0; sidingSQ = snap.sidingSQ || 0;
+  currentQuoteId     = snap.currentQuoteId || null;
+  quotePhotos        = snap.quotePhotos || [];
+  _quoteSigned       = !!snap.quoteSigned;
+  SHEET_INPUT_IDS.forEach(id => { const el = document.getElementById(id); if (el) el.value = (snap.inputs && snap.inputs[id] != null) ? snap.inputs[id] : ''; });
+  const finEl = document.getElementById('useFinancing'); if (finEl) finEl.checked = !!snap.useFinancing;
+
+  document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('active'));
+  const bar = document.getElementById('autoQuoteBar');
+  const alsideSection = document.getElementById('alsideSection');
+  if (activeTemplate) {
+    const card = document.getElementById('tpl-' + activeTemplate.id); if (card) card.classList.add('active');
+    const st = document.getElementById('statusTemplate');
+    if (st) st.textContent = (comboTemplates.length > 1 ? '🧩 Combo — ' + comboTemplates.map(t => t.label).join(' + ') : '📐 ' + activeTemplate.label);
+    const t = activeTemplate.type || 'roof';
+    setProjectType(t === 'siding' ? 'siding' : (t === 'roof' || t === 'both' ? 'roof' : t));
+    buildColorFields();
+    Object.keys(colorSelections).forEach(k => { const el = document.getElementById('color_' + k); if (el) el.value = colorSelections[k]; });
+    if (isAlsideComparison && activeTemplate.tiers) {
+      if (bar) bar.style.display = 'none';
+      if (alsideSection) alsideSection.style.display = 'block';
+      renderComparisonCards(activeTemplate); renderAlsideTiers();
+    } else {
+      const hasM = (t === 'roof' || t === 'siding' || t === 'both');
+      if (bar) bar.style.display = hasM ? 'block' : 'none';
+      if (alsideSection) alsideSection.style.display = 'none';
+    }
+  } else {
+    if (bar) bar.style.display = 'none';
+    if (alsideSection) alsideSection.style.display = 'none';
+    const st = document.getElementById('statusTemplate'); if (st) st.textContent = 'No template selected';
+  }
+  renderComboBar();
+  refreshDiscountUI();
+  if (typeof toggleFinancing === 'function') toggleFinancing();
+  recalcDiscounts();
+  renderQuote();
+  renderProductList();
+  renderScopePreview();
+}
+function renderSheetTabs() {
+  const bar = document.getElementById('sheetTabs'); if (!bar) return;
+  bar.innerHTML = sheets.map((s, i) => {
+    const active = i === activeSheetIdx;
+    return `<div onclick="switchSheet(${i})" ondblclick="renameSheet(${i})" title="Double-click to rename" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ${active ? '#1a3a5c' : '#c8d4e2'};background:${active ? '#1a3a5c' : '#fff'};color:${active ? '#fff' : '#33465c'}">${escHtmlPE(s.name)}${sheets.length > 1 ? `<span onclick="event.stopPropagation();closeSheet(${i})" style="color:${active ? '#c8d8ea' : '#c0392b'};font-size:14px;line-height:1">×</span>` : ''}</div>`;
+  }).join('');
+}
+function switchSheet(idx) {
+  if (idx === activeSheetIdx || idx < 0 || idx >= sheets.length) return;
+  sheets[activeSheetIdx] = captureSheet();
+  activeSheetIdx = idx;
+  restoreSheet(sheets[idx]);
+  renderSheetTabs();
+}
+function addSheet() {
+  if (!sheets.length) { initSheets(); }
+  sheets[activeSheetIdx] = captureSheet();
+  const s = blankSheet('Estimate ' + (sheets.length + 1));
+  sheets.push(s);
+  activeSheetIdx = sheets.length - 1;
+  restoreSheet(s);
+  renderSheetTabs();
+  if (typeof _showToast === 'function') _showToast('New estimate sheet added', '#1a7a2e');
+}
+function closeSheet(idx) {
+  if (sheets.length <= 1) return;
+  if (!confirm('Close "' + sheets[idx].name + '"? Unsaved changes on this sheet will be lost.')) return;
+  if (idx !== activeSheetIdx) sheets[activeSheetIdx] = captureSheet();
+  sheets.splice(idx, 1);
+  if (activeSheetIdx >= sheets.length) activeSheetIdx = sheets.length - 1;
+  else if (idx < activeSheetIdx) activeSheetIdx--;
+  restoreSheet(sheets[activeSheetIdx]);
+  renderSheetTabs();
+}
+function renameSheet(idx) {
+  const nm = prompt('Rename estimate sheet:', sheets[idx] ? sheets[idx].name : '');
+  if (nm && nm.trim()) { sheets[idx].name = nm.trim(); renderSheetTabs(); }
+}
+function initSheets() {
+  if (sheets.length) return;
+  sheets = [captureSheet('Estimate 1')];
+  activeSheetIdx = 0;
+  renderSheetTabs();
 }
 
 // ============================================================
@@ -2314,6 +2455,11 @@ async function loadQuoteById(id) {
   currentQuoteId = q.id;
   renderQuote();
   await loadPhotos();
+
+  // A loaded saved quote becomes the single active sheet (named for the quote).
+  sheets = [captureSheet(q.quote_number ? ('#' + q.quote_number) : 'Estimate 1')];
+  activeSheetIdx = 0;
+  if (typeof renderSheetTabs === 'function') renderSheetTabs();
 
   // Mobile: jump to quote builder tab
   const quoteBtn = document.querySelectorAll('.mobile-tab-bar button')[1];
@@ -4951,6 +5097,9 @@ function clearQuote() {
   const pr = document.getElementById('pricingSection');
   if (pr) pr.innerHTML = '';
   showSection('templateSection');
+  // Reset estimate sheets to a single fresh sheet.
+  sheets = []; activeSheetIdx = 0;
+  if (typeof initSheets === 'function') initSheets();
 }
 
 /* ─── Send for signature modal ───────────────────────────── */
