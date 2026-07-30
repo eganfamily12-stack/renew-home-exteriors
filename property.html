@@ -342,6 +342,7 @@
       <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
         <button class="btn btn-accent" style="justify-content:center;padding:9px" onclick="newQuote()">＋ New Quote for this Property</button>
         <button class="btn btn-ghost"  style="justify-content:center;padding:9px" onclick="newCO()">＋ New Change Order</button>
+        <button class="btn btn-ghost"  style="justify-content:center;padding:9px" onclick="openCancellationForm()">🚫 Cancellation Agreement</button>
         <a href="quotes.html" class="btn btn-ghost" style="justify-content:center;padding:9px">📚 All Quote History</a>
       </div>
     </div>
@@ -479,7 +480,7 @@ let pendingDeleteId = null;
   fetch(SB_URL + '/rest/v1/users?select=role&id=eq.' + s.user.id + '&limit=1',
     { headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + s.access_token } }
   ).then(r => r.json()).then(d => {
-    if (d?.[0]?.role === 'admin') document.getElementById('adminBtn').style.display = 'inline-block';
+    if (['admin','super_admin','platform_owner','director'].includes(d?.[0]?.role)) document.getElementById('adminBtn').style.display = 'inline-block';
   }).catch(() => {});
 
   // Get anchor quote ID from URL
@@ -1064,6 +1065,140 @@ function toast(msg, isError = false) {
   clearTimeout(t._t);
   t._t = setTimeout(() => { t.className = ''; }, 3200);
 }
+
+// ─── Cancellation Agreement (live, in-dashboard) ─────────────────────
+let _cxCtx = null, _cxDrawing = false, _cxHasInk = false, _cxLocked = false;
+function openCancellationForm() {
+  const q = (typeof anchorQuote !== 'undefined' && anchorQuote) ? anchorQuote : {};
+  const parts = (q.customer_address || '').split(', ');
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  set('cxName', q.customer_name || '');
+  set('cxAddr', parts[0] || '');
+  set('cxCSZ', parts.slice(1).join(', '));
+  ['cxEstNum','cxEstNum2','cxEstDate','cxEstDate2','cxEffDate'].forEach(id => set(id, ''));
+  set('cxPrint', q.customer_name || '');
+  document.getElementById('cxNameEcho').textContent = q.customer_name || 'the customer';
+  document.getElementById('cxDate').innerHTML = '&nbsp;';
+  document.getElementById('cxLockNote').style.display = 'none';
+  _cxLocked = false; _cxHasInk = false;
+  document.querySelectorAll('#cxForm .cxin, #cxForm .cxsm, #cxForm .cxta').forEach(el => { el.readOnly = false; el.style.background = '#fffef8'; });
+  const btn = document.getElementById('cxSignBtn'); if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  document.getElementById('cxModal').style.display = 'flex';
+  setTimeout(initCxSig, 60);
+}
+function closeCancellation() { document.getElementById('cxModal').style.display = 'none'; }
+function cxSyncEcho() {
+  const nm = (document.getElementById('cxName')?.value || '').trim();
+  document.getElementById('cxNameEcho').textContent = nm || 'the customer';
+  const pn = document.getElementById('cxPrint'); if (pn && !pn.value.trim()) pn.value = nm;
+}
+function cxSyncEst() {
+  const n = document.getElementById('cxEstNum')?.value || ''; const d = document.getElementById('cxEstDate')?.value || '';
+  const n2 = document.getElementById('cxEstNum2'); if (n2) n2.value = n;
+  const d2 = document.getElementById('cxEstDate2'); if (d2) d2.value = d;
+}
+function initCxSig() {
+  const c = document.getElementById('cxSig'); if (!c) return;
+  _cxCtx = c.getContext('2d');
+  _cxCtx.clearRect(0, 0, c.width, c.height);
+  _cxCtx.strokeStyle = '#1a3a5c'; _cxCtx.lineWidth = 2.5; _cxCtx.lineCap = 'round'; _cxCtx.lineJoin = 'round';
+  const pos = e => { const r = c.getBoundingClientRect(); const sx = c.width / r.width, sy = c.height / r.height; const s = e.touches ? e.touches[0] : e; return { x: (s.clientX - r.left) * sx, y: (s.clientY - r.top) * sy }; };
+  const down = e => { if (_cxLocked) return; e.preventDefault(); _cxDrawing = true; const p = pos(e); _cxCtx.beginPath(); _cxCtx.moveTo(p.x, p.y); };
+  const move = e => { if (!_cxDrawing || _cxLocked) return; e.preventDefault(); const p = pos(e); _cxCtx.lineTo(p.x, p.y); _cxCtx.stroke(); _cxHasInk = true; };
+  const up = () => { _cxDrawing = false; };
+  c.onmousedown = down; c.onmousemove = move; c.onmouseup = up; c.onmouseleave = up;
+  c.ontouchstart = down; c.ontouchmove = move; c.ontouchend = up;
+}
+function clearCxSig() { if (_cxLocked) return; const c = document.getElementById('cxSig'); if (_cxCtx && c) { _cxCtx.clearRect(0, 0, c.width, c.height); _cxHasInk = false; } }
+function signCancellation() {
+  if (_cxLocked) return;
+  if (!_cxHasInk) { toast('Please have the client sign first.', true); return; }
+  const stamp = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  document.getElementById('cxDate').textContent = stamp;
+  document.querySelectorAll('#cxForm .cxin, #cxForm .cxsm, #cxForm .cxta').forEach(el => { el.readOnly = true; el.style.background = '#fff'; });
+  _cxLocked = true;
+  document.getElementById('cxLockNote').style.display = 'block';
+  const btn = document.getElementById('cxSignBtn'); if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
+  toast('Signed — date locked ' + stamp);
+}
+function printCancellation() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const name = v('cxName') || '________________________', addr = v('cxAddr'), csz = v('cxCSZ');
+  const estNum = v('cxEstNum') || '________', estDate = v('cxEstDate') || '____________', effDate = v('cxEffDate') || '______________';
+  const printName = v('cxPrint') || name;
+  const cl2 = v('cxCl2') || 'The Parties hereby release each other from all actions, causes of actions, liabilities or claims.';
+  const cl3 = v('cxCl3') || '';
+  const dateStamp = (document.getElementById('cxDate')?.textContent || '').trim();
+  const sig = _cxHasInk ? document.getElementById('cxSig').toDataURL('image/png') : '';
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Termination of Agreement — ${esc(name)}</title>
+  <style>@page{size:letter;margin:.9in}body{font-family:'Times New Roman',Georgia,serif;font-size:13px;color:#111;line-height:1.75;max-width:7in;margin:0 auto}h1{font-size:20px;text-align:center;margin:0 0 2px}h2{font-size:14px;text-align:center;font-weight:600;color:#444;margin:0 0 26px}ol li{margin:11px 0}.line{border-bottom:1px solid #111;display:inline-block;min-width:220px}.hdr{display:flex;justify-content:space-between;margin-bottom:22px}.brand{font-size:16px;font-weight:800;color:#1a3a5c;font-family:Arial}</style></head><body>
+  <div class="hdr"><div class="brand">RENEW HOME EXTERIORS</div><div style="font-size:11px;color:#555;text-align:right;font-family:Arial">1361 Wooster Rd W, Unit A<br>Barberton, OH 44203<br>(330) 208-9366</div></div>
+  <h1>TERMINATION OF AGREEMENT</h1><h2>Mutual Release &mdash; Cancellation of Order</h2>
+  <p>This Agreement is executed by and between the following:</p>
+  <p><strong>Renew Home Exteriors</strong><br>1361 Wooster Rd W, Unit A<br>Barberton, OH 44203</p><p>and</p>
+  <p><strong>${esc(name)}</strong><br>${esc(addr) || '&nbsp;'}<br>${esc(csz) || '&nbsp;'}</p>
+  <p>This agreement is entered into now by and between Renew Home Exteriors and <strong>${esc(name)}</strong>, collectively referred to as the &ldquo;Parties&rdquo; on the <strong>#${esc(estNum)}</strong> Estimate Agreement dated <strong>${esc(estDate)}</strong>.</p>
+  <ol><li>The Parties agree the <strong>#${esc(estNum)}</strong> Estimate agreement between them dated <strong>${esc(estDate)}</strong> shall be terminated effective <strong>${esc(effDate)}</strong>.</li>
+  <li>${esc(cl2)}</li>${cl3 ? `<li>${esc(cl3)}</li>` : ''}</ol>
+  <div style="margin-top:44px"><div style="font-size:11px;color:#555">Client Signature:</div>${sig ? `<img src="${sig}" style="height:70px;display:block;margin:2px 0">` : '<div class="line" style="min-width:320px;margin-top:22px"></div>'}
+  <p style="margin-top:14px">Print Name: <strong>${esc(printName)}</strong></p>
+  <p style="margin-top:6px">Date: <span class="line">${esc(dateStamp) || '&nbsp;'}</span></p></div>
+  </body></html>`;
+  const w = window.open('', '_blank'); if (!w) { toast('Allow popups to print.', true); return; }
+  w.document.write(html); w.document.close(); w.onload = function () { w.focus(); w.print(); };
+}
 </script>
+
+<!-- ── Cancellation Agreement modal (live, editable, signable) ── -->
+<style>
+  #cxModal .cxin { border:none;border-bottom:1px solid #888;font:inherit;padding:2px 3px;background:#fffef8;width:100%;max-width:360px }
+  #cxModal .cxsm { border:none;border-bottom:1px solid #888;font:inherit;padding:1px 3px;background:#fffef8;width:120px;text-align:center }
+  #cxModal .cxta { border:1px solid #d8dee6;border-radius:5px;font:inherit;padding:6px 8px;background:#fffef8;width:100%;box-sizing:border-box;resize:vertical;min-height:44px }
+  #cxForm ol li { margin:10px 0 }
+  #cxForm p { margin:8px 0 }
+</style>
+<div id="cxModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:flex-start;justify-content:center;overflow:auto;padding:24px">
+  <div style="background:#fff;border-radius:12px;max-width:720px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.3);position:relative">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 22px;border-bottom:1px solid #e6ecf3;position:sticky;top:0;background:#fff;border-radius:12px 12px 0 0;z-index:2">
+      <strong style="font-size:16px;color:#1a3a5c">🚫 Cancellation Agreement</strong>
+      <button onclick="closeCancellation()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#888">&times;</button>
+    </div>
+    <div id="cxForm" style="padding:22px;font-family:'Times New Roman',Georgia,serif;font-size:13px;color:#111;line-height:1.7">
+      <div style="display:flex;justify-content:space-between;margin-bottom:14px">
+        <strong style="color:#1a3a5c;font-size:15px;font-family:Arial">RENEW HOME EXTERIORS</strong>
+        <span style="font-size:11px;color:#555;text-align:right;font-family:Arial">1361 Wooster Rd W, Unit A<br>Barberton, OH 44203</span>
+      </div>
+      <h2 style="text-align:center;margin:0 0 2px;font-size:18px">TERMINATION OF AGREEMENT</h2>
+      <div style="text-align:center;color:#555;margin-bottom:18px">Mutual Release &mdash; Cancellation of Order</div>
+      <p>This Agreement is executed by and between the following:</p>
+      <p><strong>Renew Home Exteriors</strong><br>1361 Wooster Rd W, Unit A<br>Barberton, OH 44203</p>
+      <p>and</p>
+      <p>
+        <input id="cxName" class="cxin" placeholder="Customer Name" oninput="cxSyncEcho()"><br>
+        <input id="cxAddr" class="cxin" placeholder="Address"><br>
+        <input id="cxCSZ" class="cxin" placeholder="City, State, Zip">
+      </p>
+      <p>This agreement is entered into now by and between Renew Home Exteriors and <strong id="cxNameEcho">the customer</strong>, collectively referred to as the &ldquo;Parties&rdquo; on the #<input id="cxEstNum" class="cxsm" placeholder="Estimate #" oninput="cxSyncEst()"> Estimate Agreement dated <input id="cxEstDate" class="cxsm" placeholder="date" oninput="cxSyncEst()">.</p>
+      <ol>
+        <li>The Parties agree the #<input id="cxEstNum2" class="cxsm" placeholder="Estimate #"> Estimate agreement between them dated <input id="cxEstDate2" class="cxsm" placeholder="date"> shall be terminated effective <input id="cxEffDate" class="cxsm" placeholder="effective date">.</li>
+        <li><textarea id="cxCl2" class="cxta">The Parties hereby release each other from all actions, causes of actions, liabilities or claims.</textarea></li>
+        <li><textarea id="cxCl3" class="cxta">The Parties agree not to disparage Renew Home Exteriors, its products, services, agents, contractors or employees either verbally, in writing, or through electronic presence including but not limited to social media, blog posts, and/or forum posts.</textarea></li>
+      </ol>
+      <div style="margin-top:20px">
+        <div style="font-size:11px;color:#555;margin-bottom:4px">Client Signature:</div>
+        <canvas id="cxSig" width="600" height="120" style="border:1px solid #c8d0dc;border-radius:6px;width:100%;max-width:600px;touch-action:none;background:#fff;display:block"></canvas>
+        <button type="button" onclick="clearCxSig()" style="font-size:11px;margin-top:4px;background:none;border:1px solid #ccc;border-radius:5px;padding:3px 10px;cursor:pointer">Clear signature</button>
+        <p style="margin-top:12px">Print Name: <input id="cxPrint" class="cxin" style="max-width:280px" placeholder="Print name"></p>
+        <p>Date: <span id="cxDate" style="border-bottom:1px solid #111;min-width:220px;display:inline-block;font-weight:600;color:#1a3a5c">&nbsp;</span></p>
+        <div id="cxLockNote" style="display:none;font-size:11px;color:#2e7d32;font-weight:700;margin-top:6px">🔒 Signed &amp; date locked</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;padding:14px 22px;border-top:1px solid #e6ecf3;position:sticky;bottom:0;background:#fff;border-radius:0 0 12px 12px">
+      <button id="cxSignBtn" onclick="signCancellation()" style="flex:1;padding:11px;background:#2e7d32;color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer">✍ Client Sign &amp; Lock Date</button>
+      <button onclick="printCancellation()" style="flex:1;padding:11px;background:#1a3a5c;color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer">🖨 Print / PDF</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
