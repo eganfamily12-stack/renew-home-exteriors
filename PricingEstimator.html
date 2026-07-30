@@ -732,7 +732,6 @@
         <button class="btn btn-outline" onclick="saveEstimate()">💾 Save</button>
         <button class="btn btn-outline" onclick="loadQuote()">📂 My Quotes</button>
         <button class="btn btn-outline" onclick="clearQuote()">+ New Quote</button>
-        <button class="btn btn-outline" style="color:#b02020;border-color:#e0b4b4" onclick="printCancellationAgreement()">🚫 Cancellation Agreement</button>
       </div>
     </div>
 
@@ -2435,7 +2434,7 @@ function renderLoadQuoteRows(quotes) {
     : '<span style="color:#999">Draft</span>';
   const grandHtml = q => q.totals?.grand != null ? '$' + Number(q.totals.grand).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
   const dateHtml  = q => q.created_at ? new Date(q.created_at).toLocaleDateString('en-US') : '—';
-  const rowHtml = (q, child) => `<tr onclick="loadQuoteById('${q.id}')" style="cursor:pointer;border-bottom:1px solid #eef2f8" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background=''">
+  const rowHtml = (q, child, clickJs) => `<tr onclick="${clickJs || (`loadQuoteById('${q.id}')`)}" style="cursor:pointer;border-bottom:1px solid #eef2f8" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background=''">
       <td style="padding:10px 12px;font-weight:700;color:#1a3a5c;white-space:nowrap">${child ? '<span style="color:#90a0b3">↳ </span>' : ''}${q.quote_number || '—'}</td>
       <td style="padding:10px 12px">${child ? `<div style="font-weight:600;font-size:12px;color:#33465c">${escHtmlPE(q.sheet_name || 'Sheet')}</div>` : `<div style="font-weight:600">${q.customer_name || '—'}</div><div style="font-size:11px;color:#888">${q.customer_address || ''}</div>`}</td>
       <td style="padding:10px 12px;font-size:11px;color:#555">${TEMPLATES[q.template_id]?.label || q.template_id || '—'}</td>
@@ -2457,14 +2456,16 @@ function renderLoadQuoteRows(quotes) {
     if (rows.length > 1 && key.indexOf('single:') !== 0) {
       rows.sort((a, b) => (a.sheet_order || 0) - (b.sheet_order || 0));
       const total = rows.reduce((s, r) => s + (Number(r.totals?.grand) || 0), 0);
-      html += `<tr style="background:#eef4fb;border-bottom:1px solid #d8e2f0">
+      const gid = rows[0].combo_group_id;
+      const openCombo = `loadComboGroup('${gid}')`;
+      html += `<tr onclick="${openCombo}" style="cursor:pointer;background:#eef4fb;border-bottom:1px solid #d8e2f0" onmouseover="this.style.background='#e2edfa'" onmouseout="this.style.background='#eef4fb'">
         <td style="padding:10px 12px;font-weight:800;color:#1a3a5c;white-space:nowrap">🧩 Combo</td>
-        <td style="padding:10px 12px"><div style="font-weight:700;color:#1a3a5c">${rows[0].customer_name || '—'}</div><div style="font-size:11px;color:#7a90a8">Combo estimate — ${rows.length} sheets · ${rows[0].customer_address || ''}</div></td>
+        <td style="padding:10px 12px"><div style="font-weight:700;color:#1a3a5c">${rows[0].customer_name || '—'}</div><div style="font-size:11px;color:#7a90a8">Combo estimate — ${rows.length} sheets · open all tabs</div></td>
         <td style="padding:10px 12px;font-size:11px;color:#7a90a8" colspan="2">${rows.map(r => escHtmlPE(r.sheet_name || '')).filter(Boolean).join(' · ')}</td>
         <td style="padding:10px 12px;text-align:right;font-weight:700;color:#6b7a90">$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-        <td style="padding:10px 12px;font-size:11px;color:#90a0b3">range</td>
+        <td style="padding:10px 12px;font-size:11px;color:#90a0b3">combo</td>
       </tr>`;
-      html += rows.map(r => rowHtml(r, true)).join('');
+      html += rows.map(r => rowHtml(r, true, openCombo)).join('');
     } else {
       html += rowHtml(rows[0], false);
     }
@@ -2485,6 +2486,68 @@ function filterLoadQuotes() {
 function closeLoadModal() {
   const modal = document.getElementById('loadQuoteModal');
   if (modal) modal.style.display = 'none';
+}
+
+// Rebuild a sheet snapshot from a saved quote row (reverse of _payloadFromSheet), so a combo
+// estimate can be reopened with all its sheets as tabs.
+function _tiersFromStored(t) {
+  const o = {}; Object.keys(t || {}).forEach(k => { o[k] = (t[k] || []).map(i => { const pid = i.product && i.product.id; const p = (pid && PRODUCTS.find(x => x.id === pid)) || i.product; return { product: p, qty: i.qty, note: i.note || '' }; }); }); return o;
+}
+function _sheetFromQuote(q) {
+  const items = (q.items || []).map(it => {
+    const pid = it.id || it.product_id;
+    const p = PRODUCTS.find(x => x.id === pid) || (it.name ? { id: pid, name: it.name, price: it.price || 0, unit: it.unit || 'EA', cat: it.cat || '', tax: it.tax || 'n' } : null);
+    return p ? { product: p, qty: it.qty, note: it.note || '' } : null;
+  }).filter(Boolean);
+  const tpl = q.template_id ? TEMPLATES[q.template_id] : null;
+  const tType = tpl ? (tpl.type || 'roof') : 'roof';
+  const isComp = !!(tpl && (tpl.isComparison || tpl.type === 'alside_comparison' || tpl.type === 'roof_comparison'));
+  const dd = q.dimension_data || {}; const pd = q.payment_data || {};
+  const inputs = Object.assign({}, dd.measurements || {}, { quoteNum: q.quote_number || '', quoteDate: q.quote_date || '', projectNotes: q.notes || q.project_notes || '', moneyDown: (pd.down != null ? pd.down : '') });
+  return {
+    name: q.sheet_name || (q.quote_number ? '#' + q.quote_number : 'Estimate'),
+    _comboGroupId: q.combo_group_id || null,
+    templateId: q.template_id || null,
+    comboTemplateIds: dd.comboTemplateIds || [],
+    quoteItems: items,
+    colorSelections: q.color_selections || {},
+    alsideTiers: q.comparison_tiers ? _tiersFromStored(q.comparison_tiers) : null,
+    isAlsideComparison: isComp,
+    discountLines: pd.discountLines || (pd.discountAmt > 0 ? [{ label: 'Discount', value: pd.discountAmt, type: 'dollar', manager: false }] : []),
+    selectedPlanIds: pd.selectedPlanIds || [],
+    useFinancing: pd.useFinancing || false,
+    projectType: tType === 'siding' ? 'siding' : (tType === 'roof' || tType === 'both' ? 'roof' : tType),
+    pitchSurcharge: dd.pitchSurcharge || 0,
+    roofSQ: dd.roofSQ || 0, sidingSQ: dd.sidingSQ || 0,
+    currentQuoteId: q.id, quotePhotos: [],
+    quoteSigned: ['signed', 'complete', 'completed'].includes(String(q.signing_status || q.status || '').toLowerCase()),
+    inputs
+  };
+}
+// Reopen a whole combo estimate — loads every sheet in the group as tabs.
+async function loadComboGroup(groupId) {
+  const { data: sd } = await _supa.auth.getSession();
+  if (!sd?.session) { _showToast('Not signed in', '#c00'); return; }
+  closeLoadModal();
+  _showToast('Loading combo estimate…', '#2e6ea6');
+  const r = await fetch(SUPABASE_URL + '/rest/v1/quotes?combo_group_id=eq.' + groupId + '&select=*&order=sheet_order.asc', {
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + sd.session.access_token }
+  });
+  if (!r.ok) { _showToast('Failed to load combo: HTTP ' + r.status, '#c00'); return; }
+  const rows = await r.json();
+  if (!rows.length) { _showToast('Combo not found', '#c00'); return; }
+  const q0 = rows[0];
+  const addrParts = (q0.customer_address || '').split(', ');
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  setVal('custName', q0.customer_name); setVal('custAddr', addrParts[0] || ''); setVal('custCity', addrParts[1] || ''); setVal('custZip', addrParts[2] || '');
+  setVal('custPhone', q0.customer_phone); setVal('custEmail', q0.customer_email);
+  if (typeof updateAddrCurrent === 'function') updateAddrCurrent();
+  sheets = rows.map(_sheetFromQuote);
+  activeSheetIdx = 0;
+  restoreSheet(sheets[0]);
+  renderSheetTabs();
+  await (typeof loadPhotos === 'function' ? loadPhotos() : Promise.resolve());
+  _showToast('✓ Combo estimate loaded — ' + sheets.length + ' sheets', '#2e8b57');
 }
 
 // ============================================================
@@ -5153,53 +5216,6 @@ async function printQuote() {
   win.onload = function() { win.focus(); win.print(); };
   // Mark as sent — contract has been generated for in-person signing
   _patchQuoteStatus('sent');
-}
-
-// Termination of Agreement / Mutual Release — a printable cancellation form pre-filled from the
-// current estimate's customer + quote info, for signature.
-function printCancellationAgreement() {
-  const g = id => (document.getElementById(id)?.value || '').trim();
-  const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const name = g('custName') || '________________________';
-  const addr = g('custAddr');
-  const cityStateZip = [g('custCity'), [g('custState') || 'OH', g('custZip')].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-  const qnum = g('quoteNum') || '________';
-  const qdate = g('quoteDate') || '____________';
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Termination of Agreement — ${esc(name)}</title>
-  <style>
-    @page{size:letter;margin:0.9in}
-    body{font-family:'Times New Roman',Georgia,serif;font-size:13px;color:#111;line-height:1.75}
-    h1{font-size:20px;text-align:center;margin:0 0 2px;letter-spacing:.5px}
-    h2{font-size:14px;text-align:center;font-weight:600;color:#444;margin:0 0 26px}
-    .party{margin:4px 0}
-    ol{margin:18px 0;padding-left:22px} ol li{margin:11px 0}
-    .sig{margin-top:52px} .line{border-bottom:1px solid #111;display:inline-block;min-width:320px}
-    .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px}
-    .brand{font-size:16px;font-weight:800;color:#1a3a5c}
-  </style></head><body>
-  <div class="hdr"><div class="brand">RENEW HOME EXTERIORS</div><div style="font-size:11px;color:#555;text-align:right">1361 Wooster Rd W, Unit A<br>Barberton, OH 44203<br>(330) 208-9366</div></div>
-  <h1>TERMINATION OF AGREEMENT</h1>
-  <h2>Mutual Release &mdash; Cancellation of Order</h2>
-  <p>This Agreement is executed by and between the following:</p>
-  <p class="party"><strong>Renew Home Exteriors</strong><br>1361 Wooster Rd W, Unit A<br>Barberton, OH 44203</p>
-  <p>and</p>
-  <p class="party"><strong>${esc(name)}</strong><br>${esc(addr) || '&nbsp;'}<br>${esc(cityStateZip) || '&nbsp;'}</p>
-  <p>This agreement is entered into now by and between Renew Home Exteriors and <strong>${esc(name)}</strong>, collectively referred to as the &ldquo;Parties&rdquo; on the <strong>#${esc(qnum)}</strong> Estimate Agreement dated <strong>${esc(qdate)}</strong>.</p>
-  <ol>
-    <li>The Parties agree the <strong>#${esc(qnum)}</strong> Estimate agreement between them dated <strong>${esc(qdate)}</strong> shall be terminated effective ______________.</li>
-    <li>The Parties hereby release each other from all actions, causes of actions, liabilities or claims.</li>
-    <li>The Parties agree not to disparage Renew Home Exteriors, its products, services, agents, contractors or employees either verbally, in writing, or through electronic presence including but not limited to social media, blog posts, and/or forum posts.</li>
-  </ol>
-  <div class="sig">
-    <p>Signature: <span class="line"></span></p>
-    <p style="margin-top:22px">Print Name: <strong>${esc(name)}</strong></p>
-    <p style="margin-top:22px">Date: <span class="line" style="min-width:200px"></span></p>
-  </div>
-  </body></html>`;
-  const win = window.open('', '_blank');
-  if (!win) { alert('Please allow popups to open the cancellation agreement.'); return; }
-  win.document.write(html); win.document.close();
-  win.onload = function() { win.focus(); win.print(); };
 }
 
 /* ─── Change Orders viewer ───────────────────────────────── */
