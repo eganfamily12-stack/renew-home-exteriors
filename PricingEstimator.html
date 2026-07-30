@@ -726,10 +726,10 @@
         </div>
       </div>
       <div class="btn-row no-print">
-        <button class="btn btn-accent" onclick="generateContract()">📄 Generate Contract</button>
-        <button class="btn" style="background:#1565c0;color:#fff;border:none;cursor:pointer" onclick="openSendModal()">📧 Send for Signature</button>
+        <button class="btn btn-accent" onclick="beginSheetAction('contract')">📄 Generate Contract</button>
+        <button class="btn" style="background:#1565c0;color:#fff;border:none;cursor:pointer" onclick="beginSheetAction('sig')">📧 Send for Signature</button>
         <button class="btn btn-primary" onclick="printQuote()">🖨️ Print / PDF</button>
-        <button class="btn btn-outline" onclick="saveQuote()">💾 Save</button>
+        <button class="btn btn-outline" onclick="saveEstimate()">💾 Save</button>
         <button class="btn btn-outline" onclick="loadQuote()">📂 My Quotes</button>
         <button class="btn btn-outline" onclick="clearQuote()">+ New Quote</button>
         <button class="btn btn-outline" style="color:#b02020;border-color:#e0b4b4" onclick="printCancellationAgreement()">🚫 Cancellation Agreement</button>
@@ -753,6 +753,17 @@
         <h3 style="margin:0 0 4px;color:#1a3a5c;font-size:17px">🧩 Add a trade to this estimate</h3>
         <p style="font-size:12px;color:#666;margin:0 0 16px">Pick another template — its line items are added alongside what's already here, in one combined estimate.</p>
         <div id="comboPickerList"></div>
+      </div>
+    </div>
+
+    <!-- ── Which-estimate picker (contract / send with multiple sheets) ── -->
+    <div id="sheetSendModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:12px;padding:24px;max-width:440px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3);position:relative;max-height:80vh;overflow:auto">
+        <button onclick="closeSheetSend()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#888">&times;</button>
+        <h3 id="sheetSendTitle" style="margin:0 0 4px;color:#1a3a5c;font-size:17px">Which estimate?</h3>
+        <p style="font-size:12px;color:#666;margin:0 0 16px">All open estimates are saved together as one combo estimate. Choose which one to proceed with.</p>
+        <div id="sheetSendList"></div>
+        <button onclick="confirmSheetAction()" style="width:100%;margin-top:8px;padding:11px;background:#1a3a5c;color:#fff;border:none;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer">Save all &amp; continue →</button>
       </div>
     </div>
 
@@ -2244,6 +2255,118 @@ async function saveQuote() {
   }
 }
 
+// ── Multi-sheet (combo) save ─────────────────────────────────
+// Build a quotes-row payload from a sheet snapshot (used to save non-active sheets too).
+function _payloadFromSheet(snap, customer) {
+  const items = (snap.quoteItems || []).map(i => ({ id: i.product.id, qty: i.qty, note: i.note || '' }));
+  let sub = 0, tax = 0; const TAX = 0.065;
+  (snap.quoteItems || []).forEach(i => { const lt = i.product.price * i.qty; sub += lt; if (i.product.tax === 'y') tax += lt * TAX; });
+  const preDisc = sub + tax;
+  let disc = 0; (snap.discountLines || []).forEach(l => { disc += l.type === 'percent' ? preDisc * (parseFloat(l.value) || 0) / 100 : (parseFloat(l.value) || 0); });
+  disc = Math.max(0, Math.min(disc, preDisc));
+  const grand = Math.max(0, preDisc - disc);
+  const down = parseFloat(snap.inputs && snap.inputs.moneyDown) || 0;
+  return {
+    tenant_id:          TENANT_ID,
+    quote_number:       ((snap.inputs && snap.inputs.quoteNum) || '').trim() || undefined,
+    customer_name:      customer.name,
+    customer_address:   customer.address,
+    customer_phone:     customer.phone,
+    customer_email:     customer.email,
+    template_id:        snap.templateId || null,
+    items:              items,
+    color_selections:   snap.colorSelections || {},
+    totals:             { subtotal: preDisc, discount: disc, grand },
+    notes:              ((snap.inputs && snap.inputs.projectNotes) || '').trim(),
+    dimension_data:     { roofSQ: snap.roofSQ, sidingSQ: snap.sidingSQ, pitchSurcharge: snap.pitchSurcharge, comboTemplateIds: snap.comboTemplateIds || [], measurements: snap.inputs || {} },
+    payment_data:       { down, useFinancing: snap.useFinancing, discountAmt: disc, discountLines: snap.discountLines || [], selectedPlanIds: snap.selectedPlanIds || [] },
+    satellite_image_url: satelliteImgUrl || null,
+    comparison_tiers:   snap.alsideTiers || null,
+  };
+}
+async function _nextQuoteNumber(session) {
+  try {
+    const nr = await fetch(SUPABASE_URL + '/rest/v1/rpc/next_quote_number', {
+      method: 'POST', body: '{}',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+    });
+    return nr.ok ? await nr.json() : null;
+  } catch { return null; }
+}
+// Save EVERY open sheet. When there's more than one, they're tied together under a shared
+// combo_group_id so My Quotes shows them as one "Combo Estimate" tree.
+async function saveAllSheets() {
+  const { data: sd } = await _supa.auth.getSession();
+  if (!sd?.session) { alert('Please sign in to save.'); return null; }
+  if (sheets.length) sheets[activeSheetIdx] = captureSheet();
+  const customer = {
+    name:    (document.getElementById('custName')?.value  || '').trim(),
+    address: [(document.getElementById('custAddr')?.value || '').trim(), (document.getElementById('custCity')?.value || '').trim(), (document.getElementById('custZip')?.value || '').trim()].filter(Boolean).join(', '),
+    phone:   (document.getElementById('custPhone')?.value || '').trim(),
+    email:   (document.getElementById('custEmail')?.value || '').trim(),
+  };
+  const multi = sheets.length > 1;
+  const groupId = multi ? ((sheets.find(s => s._comboGroupId) || {})._comboGroupId || (crypto.randomUUID ? crypto.randomUUID() : ('cg-' + Date.now() + '-' + Math.random().toString(16).slice(2)))) : null;
+  const H = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + sd.session.access_token, 'Content-Type': 'application/json' };
+  try {
+    for (let i = 0; i < sheets.length; i++) {
+      const snap = sheets[i];
+      const payload = _payloadFromSheet(snap, customer);
+      if (multi) { payload.combo_group_id = groupId; snap._comboGroupId = groupId; payload.sheet_name = snap.name || ('Estimate ' + (i + 1)); payload.sheet_order = i; }
+      if (snap.currentQuoteId) {
+        const r = await fetch(SUPABASE_URL + '/rest/v1/quotes?id=eq.' + snap.currentQuoteId, { method: 'PATCH', headers: { ...H, 'Prefer': 'return=minimal' }, body: JSON.stringify(payload) });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+      } else {
+        payload.status = 'draft'; payload.created_by = sd.session.user.id;
+        if (!payload.quote_number) { const nn = await _nextQuoteNumber(sd.session); if (nn) payload.quote_number = nn; }
+        const r = await fetch(SUPABASE_URL + '/rest/v1/quotes', { method: 'POST', headers: { ...H, 'Prefer': 'return=representation' }, body: JSON.stringify(payload) });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const [saved] = await r.json();
+        snap.currentQuoteId = saved.id;
+        if (i === activeSheetIdx) { currentQuoteId = saved.id; const el = document.getElementById('quoteNum'); if (el && payload.quote_number) el.value = payload.quote_number; }
+      }
+    }
+    if (sheets[activeSheetIdx]) currentQuoteId = sheets[activeSheetIdx].currentQuoteId || currentQuoteId;
+    renderSheetTabs();
+    _showToast(multi ? ('✓ Saved combo estimate — ' + sheets.length + ' sheets') : '✓ Saved', '#2e8b57');
+    return { groupId, ids: sheets.map(s => s.currentQuoteId) };
+  } catch (err) {
+    console.error('[saveAllSheets]', err);
+    alert('Save failed: ' + err.message);
+    return null;
+  }
+}
+// Save dispatcher used by the Save button: one sheet → normal save; multiple → grouped combo save.
+async function saveEstimate() {
+  if (sheets.length > 1) return saveAllSheets();
+  return saveQuote();
+}
+
+// Contract / Send-for-signature entry point. With one sheet, run the action directly. With several,
+// ask which estimate to act on, save ALL sheets under the combo group, then run it on the choice.
+let _pendingSheetAction = null;
+function beginSheetAction(mode) {
+  if (!sheets || sheets.length <= 1) { return mode === 'sig' ? openSendModal() : generateContract(); }
+  _pendingSheetAction = mode;
+  sheets[activeSheetIdx] = captureSheet();
+  const sheetTotal = (s) => { let sub = 0, tax = 0; (s.quoteItems || []).forEach(it => { const lt = it.product.price * it.qty; sub += lt; if (it.product.tax === 'y') tax += lt * 0.065; }); let d = 0; (s.discountLines || []).forEach(l => { d += l.type === 'percent' ? (sub + tax) * (parseFloat(l.value) || 0) / 100 : (parseFloat(l.value) || 0); }); return Math.max(0, (sub + tax) - Math.min(d, sub + tax)); };
+  const list = document.getElementById('sheetSendList');
+  if (list) list.innerHTML = sheets.map((s, i) => `<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #d8dee6;border-radius:7px;margin-bottom:6px;cursor:pointer"><input type="radio" name="sheetSendPick" value="${i}" ${i === activeSheetIdx ? 'checked' : ''}><span style="flex:1;font-size:13px;font-weight:600;color:#1a3a5c">${escHtmlPE(s.name)}</span><span style="font-size:12px;color:#2e7d32;font-weight:700">$${sheetTotal(s).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></label>`).join('');
+  const t = document.getElementById('sheetSendTitle');
+  if (t) t.textContent = mode === 'sig' ? '📧 Which estimate to send for signature?' : '📄 Which estimate to turn into a contract?';
+  const m = document.getElementById('sheetSendModal'); if (m) m.style.display = 'flex';
+}
+function closeSheetSend() { const m = document.getElementById('sheetSendModal'); if (m) m.style.display = 'none'; }
+async function confirmSheetAction() {
+  const sel = document.querySelector('input[name="sheetSendPick"]:checked');
+  const idx = sel ? parseInt(sel.value) : activeSheetIdx;
+  closeSheetSend();
+  await saveAllSheets();                       // all sheets saved together under the combo tree
+  if (idx !== activeSheetIdx) switchSheet(idx); // focus the chosen estimate
+  const mode = _pendingSheetAction; _pendingSheetAction = null;
+  if (mode === 'sig') openSendModal(); else generateContract();
+}
+
 // ── Status helpers ───────────────────────────────────────────
 async function _patchQuoteStatus(status) {
   if (!currentQuoteId) return;
@@ -2288,7 +2411,7 @@ async function loadQuote() {
 
   const r = await fetch(
     SUPABASE_URL + '/rest/v1/quotes?tenant_id=eq.' + TENANT_ID
-      + '&select=id,quote_number,customer_name,customer_address,template_id,totals,created_at,status,signing_status'
+      + '&select=id,quote_number,customer_name,customer_address,template_id,totals,created_at,status,signing_status,combo_group_id,sheet_name,sheet_order'
       + '&order=created_at.desc&limit=200',
     { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + sd.session.access_token } }
   );
@@ -2306,23 +2429,47 @@ function renderLoadQuoteRows(quotes) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#999">No saved quotes found.</td></tr>';
     return;
   }
-  tbody.innerHTML = quotes.map(q => {
-    const grand = q.totals?.grand != null ? '$' + Number(q.totals.grand).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
-    const date  = q.created_at ? new Date(q.created_at).toLocaleDateString('en-US') : '—';
-    const tplName = (TEMPLATES[q.template_id]?.label || q.template_id || '—');
-    const status = q.status === 'signed' ? '<span style="color:#2e7d32;font-weight:700">✓ Signed</span>'
-                 : q.status === 'void'   ? '<span style="color:#c62828;font-weight:700">Void</span>'
-                 : q.status === 'sent'   ? '<span style="color:#e65100;font-weight:600">Sent</span>'
-                 : '<span style="color:#999">Draft</span>';
-    return `<tr onclick="loadQuoteById('${q.id}')" style="cursor:pointer;border-bottom:1px solid #eef2f8" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background=''">
-      <td style="padding:10px 12px;font-weight:700;color:#1a3a5c;white-space:nowrap">${q.quote_number || '—'}</td>
-      <td style="padding:10px 12px"><div style="font-weight:600">${q.customer_name || '—'}</div><div style="font-size:11px;color:#888">${q.customer_address || ''}</div></td>
-      <td style="padding:10px 12px;font-size:11px;color:#555">${tplName}</td>
-      <td style="padding:10px 12px;font-size:11px;color:#888;white-space:nowrap">${date}</td>
-      <td style="padding:10px 12px;text-align:right;font-weight:700">${grand}</td>
-      <td style="padding:10px 12px">${status}</td>
+  const statusHtml = q => q.status === 'signed' ? '<span style="color:#2e7d32;font-weight:700">✓ Signed</span>'
+    : q.status === 'void' ? '<span style="color:#c62828;font-weight:700">Void</span>'
+    : q.status === 'sent' ? '<span style="color:#e65100;font-weight:600">Sent</span>'
+    : '<span style="color:#999">Draft</span>';
+  const grandHtml = q => q.totals?.grand != null ? '$' + Number(q.totals.grand).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+  const dateHtml  = q => q.created_at ? new Date(q.created_at).toLocaleDateString('en-US') : '—';
+  const rowHtml = (q, child) => `<tr onclick="loadQuoteById('${q.id}')" style="cursor:pointer;border-bottom:1px solid #eef2f8" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background=''">
+      <td style="padding:10px 12px;font-weight:700;color:#1a3a5c;white-space:nowrap">${child ? '<span style="color:#90a0b3">↳ </span>' : ''}${q.quote_number || '—'}</td>
+      <td style="padding:10px 12px">${child ? `<div style="font-weight:600;font-size:12px;color:#33465c">${escHtmlPE(q.sheet_name || 'Sheet')}</div>` : `<div style="font-weight:600">${q.customer_name || '—'}</div><div style="font-size:11px;color:#888">${q.customer_address || ''}</div>`}</td>
+      <td style="padding:10px 12px;font-size:11px;color:#555">${TEMPLATES[q.template_id]?.label || q.template_id || '—'}</td>
+      <td style="padding:10px 12px;font-size:11px;color:#888;white-space:nowrap">${dateHtml(q)}</td>
+      <td style="padding:10px 12px;text-align:right;font-weight:700">${grandHtml(q)}</td>
+      <td style="padding:10px 12px">${statusHtml(q)}</td>
     </tr>`;
-  }).join('');
+
+  // Group combo sheets under one parent "Combo Estimate" row.
+  const groups = {}; const order = [];
+  quotes.forEach(q => {
+    const key = q.combo_group_id || ('single:' + q.id);
+    if (!groups[key]) { groups[key] = []; order.push(key); }
+    groups[key].push(q);
+  });
+  let html = '';
+  order.forEach(key => {
+    const rows = groups[key];
+    if (rows.length > 1 && key.indexOf('single:') !== 0) {
+      rows.sort((a, b) => (a.sheet_order || 0) - (b.sheet_order || 0));
+      const total = rows.reduce((s, r) => s + (Number(r.totals?.grand) || 0), 0);
+      html += `<tr style="background:#eef4fb;border-bottom:1px solid #d8e2f0">
+        <td style="padding:10px 12px;font-weight:800;color:#1a3a5c;white-space:nowrap">🧩 Combo</td>
+        <td style="padding:10px 12px"><div style="font-weight:700;color:#1a3a5c">${rows[0].customer_name || '—'}</div><div style="font-size:11px;color:#7a90a8">Combo estimate — ${rows.length} sheets · ${rows[0].customer_address || ''}</div></td>
+        <td style="padding:10px 12px;font-size:11px;color:#7a90a8" colspan="2">${rows.map(r => escHtmlPE(r.sheet_name || '')).filter(Boolean).join(' · ')}</td>
+        <td style="padding:10px 12px;text-align:right;font-weight:700;color:#6b7a90">$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td style="padding:10px 12px;font-size:11px;color:#90a0b3">range</td>
+      </tr>`;
+      html += rows.map(r => rowHtml(r, true)).join('');
+    } else {
+      html += rowHtml(rows[0], false);
+    }
+  });
+  tbody.innerHTML = html;
 }
 
 function filterLoadQuotes() {
