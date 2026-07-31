@@ -389,6 +389,15 @@
       </div>
     </div>
 
+    <!-- CANCELLATION AGREEMENTS SECTION -->
+    <div class="card">
+      <div class="section-hd">
+        <h2>🚫 Cancellation Agreements <span class="count-pill" id="caCountPill">0</span></h2>
+        <button class="btn btn-ghost" onclick="openCancellationForm()">＋ New</button>
+      </div>
+      <div id="caList" style="padding:4px 0"></div>
+    </div>
+
     <!-- PHOTOS SECTION -->
     <div class="card">
       <div class="section-hd">
@@ -529,6 +538,9 @@ async function loadProperty(anchorId) {
   });
   allQuotes = await r1.json();
   if (!Array.isArray(allQuotes)) allQuotes = [anchorQuote];
+
+  // Load this property's saved cancellation agreements.
+  loadCancellations(addr || anchorQuote.customer_address);
 
   // 4. Fetch change orders for all those quote IDs
   const qIds = allQuotes.map(q => q.id);
@@ -1082,7 +1094,7 @@ function openCancellationForm() {
   document.getElementById('cxLockNote').style.display = 'none';
   _cxLocked = false; _cxHasInk = false;
   document.querySelectorAll('#cxForm .cxin, #cxForm .cxsm, #cxForm .cxta').forEach(el => { el.readOnly = false; el.style.background = '#fffef8'; });
-  const btn = document.getElementById('cxSignBtn'); if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  const btn = document.getElementById('cxSignBtn'); if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.style.display = ''; }
   document.getElementById('cxModal').style.display = 'flex';
   setTimeout(initCxSig, 60);
 }
@@ -1110,16 +1122,94 @@ function initCxSig() {
   c.ontouchstart = down; c.ontouchmove = move; c.ontouchend = up;
 }
 function clearCxSig() { if (_cxLocked) return; const c = document.getElementById('cxSig'); if (_cxCtx && c) { _cxCtx.clearRect(0, 0, c.width, c.height); _cxHasInk = false; } }
-function signCancellation() {
+let _caRows = [];
+async function signCancellation() {
   if (_cxLocked) return;
   if (!_cxHasInk) { toast('Please have the client sign first.', true); return; }
-  const stamp = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  const now = new Date();
+  const stamp = now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
   document.getElementById('cxDate').textContent = stamp;
   document.querySelectorAll('#cxForm .cxin, #cxForm .cxsm, #cxForm .cxta').forEach(el => { el.readOnly = true; el.style.background = '#fff'; });
   _cxLocked = true;
   document.getElementById('cxLockNote').style.display = 'block';
   const btn = document.getElementById('cxSignBtn'); if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
-  toast('Signed — date locked ' + stamp);
+  toast('Signed — saving to property…');
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const propAddr = (typeof anchorQuote !== 'undefined' && anchorQuote && anchorQuote.customer_address) ? anchorQuote.customer_address : [v('cxAddr'), v('cxCSZ')].filter(Boolean).join(', ');
+  const payload = {
+    quote_id:         (typeof anchorQuote !== 'undefined' && anchorQuote) ? anchorQuote.id : null,
+    customer_name:    v('cxName'),
+    customer_address: propAddr,
+    estimate_number:  v('cxEstNum'),
+    estimate_date:    v('cxEstDate'),
+    effective_date:   v('cxEffDate'),
+    clauses:          { c2: v('cxCl2'), c3: v('cxCl3'), addr: v('cxAddr'), csz: v('cxCSZ') },
+    print_name:       v('cxPrint') || v('cxName'),
+    signature_data:   _cxHasInk ? document.getElementById('cxSig').toDataURL('image/png') : null,
+    signed_at:        now.toISOString(),
+  };
+  try {
+    const r = await fetch(SB_URL + '/rest/v1/cancellation_agreements', {
+      method: 'POST',
+      headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    toast('✓ Cancellation agreement saved to property');
+    loadCancellations(propAddr);
+  } catch (err) {
+    console.error('[cancellation save]', err);
+    toast('Signed, but save failed: ' + err.message, true);
+  }
+}
+async function loadCancellations(address) {
+  const el = document.getElementById('caList'); if (!el) return;
+  if (!address) { renderCancellations([]); return; }
+  try {
+    const r = await fetch(SB_URL + '/rest/v1/cancellation_agreements?customer_address=eq.' + encodeURIComponent(address) + '&select=*&order=created_at.desc', {
+      headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + session.access_token }
+    });
+    _caRows = r.ok ? await r.json() : [];
+    if (!Array.isArray(_caRows)) _caRows = [];
+    renderCancellations(_caRows);
+  } catch { renderCancellations([]); }
+}
+function renderCancellations(rows) {
+  const el = document.getElementById('caList'); const pill = document.getElementById('caCountPill');
+  if (pill) pill.textContent = rows.length;
+  if (!el) return;
+  if (!rows.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:12px 4px">No cancellation agreements for this property.</div>'; return; }
+  el.innerHTML = rows.map(c => {
+    const when = c.signed_at ? new Date(c.signed_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : (c.created_at ? new Date(c.created_at).toLocaleDateString('en-US') : '—');
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid #e6ecf3;border-radius:8px;margin-bottom:6px">
+      <div><div style="font-weight:600;font-size:13px;color:#1a3a5c">${h(c.customer_name || '—')}${c.estimate_number ? ' · Est #' + h(c.estimate_number) : ''}</div>
+      <div style="font-size:11px;color:#7a90a8">${c.signature_data ? '🔒 Signed' : 'Draft'} · ${when}${c.effective_date ? ' · effective ' + h(c.effective_date) : ''}</div></div>
+      <button class="btn btn-ghost" style="padding:5px 10px" onclick="viewCancellation('${c.id}')">View</button>
+    </div>`;
+  }).join('');
+}
+function viewCancellation(id) {
+  const c = _caRows.find(x => x.id === id); if (!c) return;
+  openCancellationForm();
+  setTimeout(() => {
+    const set = (fid, val) => { const el = document.getElementById(fid); if (el) el.value = val || ''; };
+    const cl = c.clauses || {};
+    set('cxName', c.customer_name);
+    set('cxAddr', cl.addr || (c.customer_address || '').split(', ')[0] || '');
+    set('cxCSZ', cl.csz || (c.customer_address || '').split(', ').slice(1).join(', '));
+    set('cxEstNum', c.estimate_number); set('cxEstNum2', c.estimate_number);
+    set('cxEstDate', c.estimate_date); set('cxEstDate2', c.estimate_date);
+    set('cxEffDate', c.effective_date);
+    set('cxPrint', c.print_name || c.customer_name);
+    set('cxCl2', cl.c2 || ''); set('cxCl3', cl.c3 || '');
+    document.getElementById('cxNameEcho').textContent = c.customer_name || 'the customer';
+    document.getElementById('cxDate').textContent = c.signed_at ? new Date(c.signed_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    if (c.signature_data && _cxCtx) { const img = new Image(); img.onload = () => { const cv = document.getElementById('cxSig'); _cxCtx.clearRect(0, 0, cv.width, cv.height); _cxCtx.drawImage(img, 0, 0, cv.width, cv.height); _cxHasInk = true; }; img.src = c.signature_data; }
+    document.querySelectorAll('#cxForm .cxin, #cxForm .cxsm, #cxForm .cxta').forEach(el => { el.readOnly = true; el.style.background = '#fff'; });
+    _cxLocked = true;
+    document.getElementById('cxLockNote').style.display = c.signature_data ? 'block' : 'none';
+    const btn = document.getElementById('cxSignBtn'); if (btn) btn.style.display = 'none';
+  }, 130);
 }
 function printCancellation() {
   const v = id => (document.getElementById(id)?.value || '').trim();
