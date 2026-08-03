@@ -2762,6 +2762,38 @@ function generateScopeText() {
   const lines = [];
   const tpl = activeTemplate;
 
+  // ── Combo estimates: separate the Scope of Work BY service type, each labeled with its own
+  //    scope-of-work text (the trade template's description), colors, work items, and warranty. ──
+  if (comboTemplates && comboTemplates.length > 1) {
+    const SKIP_CATS = new Set(['Permit','Delivery','Timeline']);
+    const SKIP_NAMES = /^(permit|deliver|timeline|schedule)/i;
+    const isScope = i => !SKIP_CATS.has(i.product.cat) && !SKIP_NAMES.test(i.product.name);
+    const fmtQty = i => (i.qty !== 1 ? ' (' + (Number.isInteger(i.qty) ? i.qty : parseFloat(i.qty).toFixed(2)) + ' ' + (i.product.unit || 'unit') + ')' : '');
+    const tradeCats = type => ({ roof: ['Roofing'], siding: ['Siding', 'Gutters & Trim'], windows: ['Windows', 'Window Upgrades'], doors: ['Doors'], gutters: ['Gutters & Trim'] }[type] || []);
+    const colorsFor = t => (t.colorFields || []).map(cf => { const el = document.getElementById('color_' + cf.id); const val = (el ? el.value : '') || colorSelections[cf.id] || ''; return val ? { label: cf.label, value: val } : null; }).filter(Boolean);
+    lines.push('PROJECT: COMBO — ' + comboTemplates.map(t => (t.label || t.name)).join(' + ').toUpperCase());
+    lines.push('─'.repeat(48));
+    const used = new Set();
+    comboTemplates.forEach(t => {
+      lines.push('');
+      lines.push('═══ ' + (t.label || t.name).toUpperCase() + ' — SCOPE OF WORK ═══');
+      if (t.description) t.description.split('\n').forEach(l => lines.push(l.trim() ? l : ''));
+      const cols = colorsFor(t);
+      if (cols.length) { lines.push(''); lines.push('COLOR & OPTION SELECTIONS:'); cols.forEach(c => lines.push('  • ' + c.label + ':  ' + c.value)); }
+      const cats = tradeCats(t.type); const work = [];
+      quoteItems.forEach((i, ix) => { if (!used.has(ix) && cats.includes(i.product.cat) && isScope(i)) { work.push(i); used.add(ix); } });
+      if (work.length) { lines.push(''); lines.push('WORK INCLUDED:'); work.forEach(i => lines.push('  • ' + i.product.name + fmtQty(i) + (i.note ? ' — ' + i.note : ''))); }
+      if (t.warranty) { lines.push(''); lines.push('WARRANTY:'); lines.push('  ' + t.warranty); }
+    });
+    const extra = quoteItems.filter((i, ix) => isScope(i) && !used.has(ix));
+    if (extra.length) { lines.push(''); lines.push('═══ ADDITIONAL WORK ═══'); extra.forEach(i => lines.push('  • ' + i.product.name + fmtQty(i))); }
+    const admin = quoteItems.filter(i => !isScope(i));
+    if (admin.length) { lines.push(''); lines.push('ADMINISTRATIVE:'); admin.forEach(i => lines.push('  • ' + i.product.name)); }
+    const cnotes = (document.getElementById('projectNotes') || {}).value?.trim() || '';
+    if (cnotes) { lines.push(''); lines.push('ADDITIONAL NOTES:'); cnotes.split('\n').forEach(l => lines.push('  ' + l)); }
+    return lines.join('\n');
+  }
+
   // ── Header ──
   if (tpl) {
     lines.push('PROJECT: ' + tpl.label.toUpperCase());
@@ -4757,20 +4789,34 @@ function buildFullPDFHtml() {
   const scopeLineItems = quoteItems.filter(i => !SKIP_SCOPE.test(i.product.name));
   const adminLineItems = quoteItems.filter(i => SKIP_SCOPE.test(i.product.name));
 
-  const workList = scopeLineItems.length ? `
+  const _itemRow = i => { const qty = i.qty !== 1 ? `<span style="color:#6b7a90">(${Number.isInteger(i.qty) ? i.qty : parseFloat(i.qty).toFixed(2)} ${i.product.unit || ''})</span>` : ''; return `<tr style="border-bottom:1px solid #f0f4fa"><td style="padding:5px 6px">• ${h(i.product.name)}${i.note ? ` <em style="color:#6b7a90">— ${h(i.note)}</em>` : ''}</td><td style="padding:5px 6px;text-align:right;white-space:nowrap">${qty}</td></tr>`; };
+  const _adminRow = i => `<tr style="border-bottom:1px solid #f0f4fa"><td style="padding:5px 6px;color:#6b7a90">• ${h(i.product.name)}</td><td></td></tr>`;
+  const _sectionHd = txt => `<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.7px;color:#1a3a5c;border-bottom:2px solid #1a3a5c;padding-bottom:4px;margin-bottom:8px">${txt}</div>`;
+  const _tradeCats = type => ({ roof: ['Roofing'], siding: ['Siding', 'Gutters & Trim'], windows: ['Windows', 'Window Upgrades'], doors: ['Doors'], gutters: ['Gutters & Trim'] }[type] || []);
+  let workList = '';
+  if (_isCombo) {
+    // Combo: group Work Included by service type, each labeled.
+    const usedW = new Set();
+    comboTemplates.forEach(t => {
+      const cats = _tradeCats(t.type);
+      const work = scopeLineItems.filter(i => !usedW.has(i) && cats.includes(i.product.cat));
+      work.forEach(i => usedW.add(i));
+      if (!work.length) return;
+      workList += `<div style="margin:16px 0 0">${_sectionHd(h(t.label || t.name) + ' — Work Included')}<table style="width:100%;border-collapse:collapse;font-size:11px">${work.map(_itemRow).join('')}</table></div>`;
+    });
+    const extraW = scopeLineItems.filter(i => !usedW.has(i));
+    if (extraW.length) workList += `<div style="margin:16px 0 0">${_sectionHd('Additional Work')}<table style="width:100%;border-collapse:collapse;font-size:11px">${extraW.map(_itemRow).join('')}</table></div>`;
+    if (adminLineItems.length) workList += `<div style="margin:16px 0 0">${_sectionHd('Administrative')}<table style="width:100%;border-collapse:collapse;font-size:11px">${adminLineItems.map(_adminRow).join('')}</table></div>`;
+  } else {
+    workList = scopeLineItems.length ? `
     <div style="margin:16px 0 0">
-      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.7px;color:#1a3a5c;border-bottom:2px solid #1a3a5c;padding-bottom:4px;margin-bottom:8px">Work Included</div>
+      ${_sectionHd('Work Included')}
       <table style="width:100%;border-collapse:collapse;font-size:11px">
-        ${scopeLineItems.map(i => {
-          const qty = i.qty !== 1 ? `<span style="color:#6b7a90">(${Number.isInteger(i.qty) ? i.qty : parseFloat(i.qty).toFixed(2)} ${i.product.unit || ''})</span>` : '';
-          return `<tr style="border-bottom:1px solid #f0f4fa">
-            <td style="padding:5px 6px">• ${h(i.product.name)}${i.note ? ` <em style="color:#6b7a90">— ${h(i.note)}</em>` : ''}</td>
-            <td style="padding:5px 6px;text-align:right;white-space:nowrap">${qty}</td>
-          </tr>`;
-        }).join('')}
-        ${adminLineItems.map(i => `<tr style="border-bottom:1px solid #f0f4fa"><td style="padding:5px 6px;color:#6b7a90">• ${h(i.product.name)}</td><td></td></tr>`).join('')}
+        ${scopeLineItems.map(_itemRow).join('')}
+        ${adminLineItems.map(_adminRow).join('')}
       </table>
     </div>` : '';
+  }
 
   // Additional notes section
   const notesSection = notes ? `
