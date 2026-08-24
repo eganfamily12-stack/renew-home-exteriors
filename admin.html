@@ -523,6 +523,8 @@
             <option value="windows">Windows</option>
             <option value="doors">Doors</option>
             <option value="gutters">Gutters</option>
+            <option value="roof_comparison">Roofing — 3-Tier Comparison</option>
+            <option value="alside_comparison">Siding — 3-Tier Comparison</option>
           </select>
         </div>
       </div>
@@ -545,37 +547,15 @@
 
       <hr style="margin:16px 0;border-color:var(--border)">
 
-      <!-- PROPOSAL DESIGNER -->
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <strong style="font-size:13px">📄 Proposal Look &amp; Pages</strong>
+      <!-- SECTION BUILDER -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <strong style="font-size:13px">Contract Sections</strong>
+        <button class="btn btn-ghost btn-sm" onclick="openAddSection()">+ Add Block</button>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Proposal Theme</label>
-          <select id="tm_theme" onchange="onThemeChange()">
-            <option value="classic">Classic</option>
-            <option value="renew2026">Renew 2026 (branded)</option>
-          </select>
-        </div>
-        <div class="form-group" style="justify-content:flex-end">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;margin-top:22px">
-            <input type="checkbox" id="tm_customize" onchange="onCustomizeToggle()" style="width:auto"> Customize the pages
-          </label>
-        </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
+        Drag sections up/down to set the order they appear in the estimate and contract.
       </div>
-      <div id="themeOnlyNote" style="font-size:12px;color:var(--muted);margin-top:2px">
-        Using the standard <b id="themeNoteName">Classic</b> page flow. Comparison quotes automatically show the Good/Better/Best page. Turn on <b>Customize</b> to rearrange or add pages.
-      </div>
-      <div id="pagesWrap" style="display:none;margin-top:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <strong style="font-size:13px">Proposal Pages</strong>
-          <button class="btn btn-ghost btn-sm" onclick="openAddSection()">+ Add Page</button>
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
-          Reorder or remove pages. Note: customizing fixes the page order, so the automatic Good/Better/Best switch for comparison quotes is off while customized — add the <b>System Tiers</b> page yourself for a comparison proposal.
-        </div>
-        <div class="section-list" id="sectionList"></div>
-      </div>
+      <div class="section-list" id="sectionList"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('templateModal')">Cancel</button>
@@ -1041,10 +1021,7 @@ function openAddTemplate() {
     document.getElementById(id).value = '';
   });
   document.getElementById('tm_type').value = 'roof';
-  document.getElementById('tm_theme').value = 'classic';
-  document.getElementById('tm_customize').checked = false;
   editingSections = [];
-  _updatePagesUI();
   renderSectionList();
   openModal('templateModal');
 }
@@ -1063,130 +1040,145 @@ function openEditTemplate(id) {
   document.getElementById('tm_description').value  = td.description || '';
   document.getElementById('tm_warrantyBase').value = td.warrantyBase || '';
   document.getElementById('tm_warranty').value     = td.warranty || '';
-  const _theme = td.proposalTheme === 'renew2026' ? 'renew2026' : 'classic';
-  document.getElementById('tm_theme').value = _theme;
-  const _hasDB = Array.isArray(td.documentBlocks) && td.documentBlocks.length;
-  document.getElementById('tm_customize').checked = !!_hasDB;
-  editingSections = _hasDB ? td.documentBlocks.map(function(b){ return _blockToPage(b, _theme); }).filter(Boolean) : [];
-  _updatePagesUI();
+  editingSections = JSON.parse(JSON.stringify(td.sections || []));
+  if (editingSections.length === 0) {
+    // Pre-populate with sensible defaults from existing template fields
+    editingSections = buildDefaultSections(td);
+  }
   renderSectionList();
   openModal('templateModal');
 }
 
-function _currentTheme(){ return document.getElementById('tm_theme').value === 'renew2026' ? 'renew2026' : 'classic'; }
+function buildDefaultSections(td) {
+  // Convert existing template fields into a default section stack
+  const sections = [
+    { type: 'job_details',      order: 1,  label: 'Customer & Job Details' },
+    { type: 'estimate_details', order: 2,  label: 'Estimate / Line Items' },
+  ];
+  if (td.colorFields && td.colorFields.length)
+    sections.push({ type: 'color_selections', order: 3, label: 'Color Selections' });
+  if (td.description)
+    sections.push({ type: 'description', order: sections.length + 1, label: 'Project Scope', content: td.description });
+  if (td.warrantyBase || td.warranty)
+    sections.push({ type: 'warranty', order: sections.length + 1, label: 'Warranty' });
+  sections.push({ type: 'timeline',  order: sections.length + 1, label: 'Project Timeline' });
+  sections.push({ type: 'signature', order: sections.length + 1, label: 'Signatures' });
+  return sections;
+}
 
-const PAGE_CATALOG = [
-  { key:'cover',         icon:'🏠', label:'Cover',                          desc:'Hero photo, logo, customer & date',            gen:{renew2026:'cover2',         classic:'cover'},         required:true },
-  { key:'intro',         icon:'👋', label:'Why Us / Intro',                 desc:'Personal letter, reviews, badges',             gen:{renew2026:'intro2',         classic:'intro'} },
-  { key:'tiers',         icon:'📊', label:'System Tiers (Good/Better/Best)', desc:'Auto-builds from a 3-tier comparison quote',   gen:{renew2026:'tiers2',         classic:'product'} },
-  { key:'scope',         icon:'📝', label:'Scope of Work',                  desc:'Selected system + checklist',                  gen:{renew2026:'product2',       classic:'product'} },
-  { key:'pricing',       icon:'💰', label:'Pricing & Financing',            desc:'Totals + monthly payment',                     gen:{renew2026:'pricing2',       classic:'pricing'} },
-  { key:'terms',         icon:'📜', label:'Terms & Conditions',             desc:'Legal terms + initials',                       gen:{renew2026:'terms2',         classic:'terms1'} },
-  { key:'authorization', icon:'✍️', label:'Authorization / Signatures',     desc:'Signature page (required)',                    gen:{renew2026:'authorization2', classic:'authorization'}, required:true },
-  { key:'image',         icon:'🖼️', label:'Full-page Image',          desc:'Manufacturer page, badge sheet, etc.',         custom:'image' },
-  { key:'html',          icon:'✏️', label:'Custom HTML Page',               desc:'Your own content + merge fields',              custom:'html' },
+const BLOCK_TYPES = [
+  { type: 'pdf',              icon: '📄', label: 'PDF Attachment',   desc: 'Upload intro letter, T&C, warranty cert, etc.' },
+  { type: 'job_details',     icon: '📋', label: 'Job Details',       desc: 'Customer name, address, quote number, date' },
+  { type: 'estimate_details',icon: '💰', label: 'Estimate / Pricing',desc: 'Full line-item table with totals' },
+  { type: 'description',     icon: '📝', label: 'Project Scope',     desc: 'Job description text block' },
+  { type: 'warranty',        icon: '⭐', label: 'Warranty',           desc: 'Auto warranty text (base or upgrade)' },
+  { type: 'color_selections',icon: '🎨', label: 'Color Selections',  desc: 'Selected colors for the job' },
+  { type: 'timeline',        icon: '📅', label: 'Timeline',          desc: 'Project start/completion timeline' },
+  { type: 'financing',       icon: '☀️', label: 'Financing',          desc: 'Sunlight Financial monthly payment block' },
+  { type: 'text',            icon: '✏️', label: 'Text Block',         desc: 'Free-form notes or terms excerpt' },
+  { type: 'signature',       icon: '✍️', label: 'Signatures',         desc: 'Customer + rep signature blocks' },
 ];
-function _catalog(key){ return PAGE_CATALOG.find(c=>c.key===key); }
 
-function _blockToPage(b, theme){
-  if (b && typeof b === 'object') {
-    if (b.type === 'image')       return { key:'image', label:b.caption||'Full-page Image', src:b.src||'' };
-    if (b.type === 'custom_html') return { key:'html',  label:'Custom HTML Page', html:b.html||'' };
-    return { key:'raw', label:(b.type||'block'), raw:b };
-  }
-  const name = String(b||'');
-  const hit = PAGE_CATALOG.find(c => c.gen && (c.gen.renew2026===name || c.gen.classic===name));
-  if (hit) return { key:hit.key, label:hit.label };
-  return { key:'raw', label:name, raw:name };
-}
-function _pageToBlock(p, theme){
-  if (p.key === 'image') return { type:'image', src:p.src||'', caption:p.label||'' };
-  if (p.key === 'html')  return { type:'custom_html', html:p.html||'' };
-  if (p.key === 'raw')   return p.raw;
-  const c=_catalog(p.key);
-  if (c && c.gen) return c.gen[theme] || c.gen.classic;
-  return p.key;
-}
-function buildDefaultBlocks(theme){
-  return ['cover','intro','scope','pricing','terms','authorization'].map(k => ({ key:k, label:_catalog(k).label }));
-}
-
-function _updatePagesUI(){
-  const custom = document.getElementById('tm_customize').checked;
-  document.getElementById('pagesWrap').style.display     = custom ? 'block' : 'none';
-  document.getElementById('themeOnlyNote').style.display = custom ? 'none' : 'block';
-  const n=document.getElementById('themeNoteName'); if(n) n.textContent = (_currentTheme()==='renew2026' ? 'Renew 2026' : 'Classic');
-}
-function onThemeChange(){ _updatePagesUI(); renderSectionList(); }
-function onCustomizeToggle(){
-  const custom = document.getElementById('tm_customize').checked;
-  if (custom && (!editingSections || !editingSections.length)) editingSections = buildDefaultBlocks(_currentTheme());
-  _updatePagesUI(); renderSectionList();
-}
-
-function renderSectionList(){
+function renderSectionList() {
   const el = document.getElementById('sectionList');
-  if (!el) return;
-  if (!editingSections.length){
-    el.innerHTML = '<div style="font-size:12px;color:#999;text-align:center;padding:12px">No pages yet — click "+ Add Page"</div>';
+  if (!editingSections.length) {
+    el.innerHTML = '<div style="font-size:12px;color:#999;text-align:center;padding:12px">No sections yet — click "+ Add Block" to build the document structure</div>';
     return;
   }
-  el.innerHTML = editingSections.map((p,i)=>{
-    const c = _catalog(p.key) || { icon:'📄', label:p.label||p.key };
-    const req = !!c.required;
-    const extra = p.key==='image' ? ' <span style="color:var(--muted);font-size:10px">(image)</span>'
-                : p.key==='html'  ? ' <span style="color:var(--muted);font-size:10px">(custom HTML)</span>' : '';
-    return '<div class="section-item">'
-      + '<span class="s-icon">'+(c.icon||'📄')+'</span>'
-      + '<div style="flex:1"><div class="s-label">'+(p.label||c.label)+extra+(req?' <span style="color:var(--muted);font-size:10px">· required</span>':'')+'</div><div class="s-type">page '+(i+1)+'</div></div>'
-      + '<div class="s-actions">'
-      + '<button class="s-move" onclick="moveSection('+i+',-1)" '+(i===0?'disabled style=opacity:.3':'')+'>▲</button>'
-      + '<button class="s-move" onclick="moveSection('+i+',1)" '+(i===editingSections.length-1?'disabled style=opacity:.3':'')+'>▼</button>'
-      + '<button class="s-del" onclick="removeSection('+i+')" '+(req?'disabled title="Required" style=opacity:.3':'')+'>✕</button>'
-      + '</div></div>';
+  const sorted = [...editingSections].sort((a, b) => a.order - b.order);
+  el.innerHTML = sorted.map((s, i) => {
+    const bt = BLOCK_TYPES.find(b => b.type === s.type) || { icon: '📄', label: s.type };
+    const pdfInfo = s.type === 'pdf' && s.filename ? ` <span style="color:var(--muted);font-size:10px">(${s.filename})</span>` : '';
+    return `
+      <div class="section-item">
+        <span class="s-icon">${bt.icon}</span>
+        <div style="flex:1">
+          <div class="s-label">${s.label || bt.label}${pdfInfo}</div>
+          <div class="s-type">${s.type}</div>
+        </div>
+        <div class="s-actions">
+          <button class="s-move" title="Move up"   onclick="moveSection(${i}, -1)" ${i === 0 ? 'disabled style=opacity:.3' : ''}>▲</button>
+          <button class="s-move" title="Move down" onclick="moveSection(${i},  1)" ${i === sorted.length - 1 ? 'disabled style=opacity:.3' : ''}>▼</button>
+          <button class="s-del" title="Remove" onclick="removeSection(${i})">✕</button>
+        </div>
+      </div>`;
   }).join('');
 }
-function moveSection(i,dir){ const j=i+dir; if(j<0||j>=editingSections.length) return; const t=editingSections[i]; editingSections[i]=editingSections[j]; editingSections[j]=t; renderSectionList(); }
-function removeSection(i){ const p=editingSections[i]; if(!p) return; const c=_catalog(p.key); if(c&&c.required) return; editingSections.splice(i,1); renderSectionList(); }
 
-function openAddSection(){
-  pendingBlockType=null;
-  document.getElementById('sectionForm').style.display='none';
-  document.getElementById('sectionModalFooter').style.display='none';
-  document.getElementById('sf_label').value='';
-  document.getElementById('sf_content').value='';
-  const pg=document.getElementById('sf_pdf_group'); if(pg) pg.style.display='none';
-  document.getElementById('sf_content_group').style.display='none';
-  const theme=_currentTheme();
-  const items = PAGE_CATALOG.filter(c => !(c.key==='tiers' && theme!=='renew2026'));
-  document.getElementById('blockTypePicker').innerHTML = items.map(c=>
-    '<div class="block-type-btn" onclick="selectBlockType(\''+c.key+'\')"><div class="bt-icon">'+c.icon+'</div><div class="bt-label">'+c.label+'</div><div class="bt-desc">'+c.desc+'</div></div>'
-  ).join('');
+function moveSection(idx, dir) {
+  const sorted = [...editingSections].sort((a, b) => a.order - b.order);
+  const target = sorted[idx];
+  const swap   = sorted[idx + dir];
+  if (!swap) return;
+  const tmp    = target.order;
+  target.order = swap.order;
+  swap.order   = tmp;
+  renderSectionList();
+}
+
+function removeSection(idx) {
+  const sorted = [...editingSections].sort((a, b) => a.order - b.order);
+  editingSections.splice(editingSections.indexOf(sorted[idx]), 1);
+  // Re-number
+  editingSections.sort((a, b) => a.order - b.order).forEach((s, i) => s.order = i + 1);
+  renderSectionList();
+}
+
+function openAddSection() {
+  pendingBlockType = null;
+  document.getElementById('sectionForm').style.display        = 'none';
+  document.getElementById('sectionModalFooter').style.display = 'none';
+  document.getElementById('sf_label').value   = '';
+  document.getElementById('sf_content').value = '';
+  document.getElementById('sf_pdf_group').style.display     = 'none';
+  document.getElementById('sf_content_group').style.display = 'none';
+
+  document.getElementById('blockTypePicker').innerHTML = BLOCK_TYPES.map(bt => `
+    <div class="block-type-btn" onclick="selectBlockType('${bt.type}')">
+      <div class="bt-icon">${bt.icon}</div>
+      <div class="bt-label">${bt.label}</div>
+      <div class="bt-desc">${bt.desc}</div>
+    </div>`).join('');
   openModal('sectionModal');
 }
-function selectBlockType(key){
-  pendingBlockType=key;
-  const c=_catalog(key);
-  document.getElementById('sectionFormLabel').textContent = c.label + ' — Label';
-  document.getElementById('sf_label').value = c.label;
-  document.getElementById('sectionForm').style.display='block';
-  document.getElementById('sectionModalFooter').style.display='flex';
-  const cg=document.getElementById('sf_content_group');
-  const lbl=cg.querySelector('label');
-  if (key==='image'){ cg.style.display='block'; if(lbl) lbl.textContent='Image URL'; document.getElementById('sf_content').placeholder='https://…/brochure-page.png'; }
-  else if (key==='html'){ cg.style.display='block'; if(lbl) lbl.textContent='HTML content ({{customer.name}}, {{quote.total}}, {{property.photo}}…)'; document.getElementById('sf_content').placeholder='<h1>Hello {{customer.name}}</h1>'; }
-  else { cg.style.display='none'; }
-  document.getElementById('blockTypePicker').innerHTML='';
+
+function selectBlockType(type) {
+  pendingBlockType = type;
+  const bt = BLOCK_TYPES.find(b => b.type === type);
+  document.getElementById('sectionFormLabel').textContent       = bt.label + ' — Label';
+  document.getElementById('sf_label').value                     = bt.label;
+  document.getElementById('sectionForm').style.display          = 'block';
+  document.getElementById('sectionModalFooter').style.display   = 'flex';
+  document.getElementById('sf_content_group').style.display     = type === 'description' || type === 'text' ? 'block' : 'none';
+  document.getElementById('sf_pdf_group').style.display         = type === 'pdf' ? 'block' : 'none';
+  document.getElementById('sf_pdf_existing').style.display      = 'none';
+  document.getElementById('blockTypePicker').innerHTML          = '';
 }
-function addSection(){
-  if(!pendingBlockType) return;
-  const key=pendingBlockType;
-  const label=document.getElementById('sf_label').value.trim() || (_catalog(key)||{}).label || key;
-  const content=document.getElementById('sf_content').value.trim();
-  const page={ key, label };
-  if (key==='image') page.src=content;
-  if (key==='html')  page.html=content;
-  editingSections.push(page);
+
+async function addSection() {
+  if (!pendingBlockType) return;
+  const label   = document.getElementById('sf_label').value.trim() || pendingBlockType;
+  const content = document.getElementById('sf_content').value.trim();
+  const section = {
+    type:  pendingBlockType,
+    order: editingSections.length + 1,
+    label
+  };
+  if (content)              section.content  = content;
+
+  // PDF upload
+  if (pendingBlockType === 'pdf') {
+    const file = document.getElementById('sf_pdf').files[0];
+    if (file) {
+      const uploadResult = await uploadTemplatePDF(file);
+      if (uploadResult) {
+        section.storageUrl = uploadResult.url;
+        section.filename   = file.name;
+      }
+    }
+  }
+
+  editingSections.push(section);
   renderSectionList();
   closeModal('sectionModal');
 }
@@ -1224,29 +1216,27 @@ async function saveTemplate() {
   // Fetch existing template_data to preserve fields we don't edit here
   const existing    = allTemplates.find(t => t.id === id);
   const existingTD  = existing?.template_data || {};
-  const _theme     = document.getElementById('tm_theme').value === 'renew2026' ? 'renew2026' : 'classic';
-  const _customize = document.getElementById('tm_customize').checked;
+  const sections    = [...editingSections].sort((a, b) => a.order - b.order);
 
-  // Guard: a customized proposal must keep the signature/authorization page
-  if (_customize && !editingSections.some(function(p){ return p.key === 'authorization'; })) {
-    toast('Add the Authorization / Signatures page before saving', true); return;
-  }
+  // A comparison template (roof_comparison / alside_comparison) carries its behavior in its `type`.
+  // The plain Type dropdown must never overwrite that — otherwise the estimator routes its Auto-Fill
+  // to the wrong (roof vs siding) builder and the Scope of Work comes out wrong. Preserve it.
+  const _isCompareTpl = !!(existingTD.tiers || existingTD.isComparison ||
+    existingTD.type === 'roof_comparison' || existingTD.type === 'alside_comparison');
 
   const template_data = {
     ...existingTD,
     id:           slug,
     name,
     label:        document.getElementById('tm_label').value.trim(),
-    type:         document.getElementById('tm_type').value,
+    type:         _isCompareTpl ? (existingTD.type || document.getElementById('tm_type').value)
+                                : document.getElementById('tm_type').value,
     timeline:     document.getElementById('tm_timeline').value.trim(),
     description:  document.getElementById('tm_description').value.trim(),
     warrantyBase: document.getElementById('tm_warrantyBase').value.trim() || undefined,
     warranty:     document.getElementById('tm_warranty').value.trim(),
+    sections
   };
-  delete template_data.sections;
-  if (_theme === 'renew2026') template_data.proposalTheme = 'renew2026'; else delete template_data.proposalTheme;
-  if (_customize) template_data.documentBlocks = editingSections.map(function(p){ return _pageToBlock(p, _theme); });
-  else delete template_data.documentBlocks;
 
   if (id) {
     // Update

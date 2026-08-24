@@ -2056,11 +2056,18 @@ function renderComparisonCards(tpl) {
   }).join('');
 }
 
-// Dispatch Auto-Fill to the right builder based on the active comparison type.
+// Dispatch Auto-Fill to the right builder. We trust the template type first, but fall back to the
+// actual category of the tier's main product so a mislabeled/blank type can never route a roofing
+// comparison into the siding builder (which silently drops all the roof line items from the scope).
 function autoFillTier(tierKey) {
   const tpl = activeTemplate;
   if (!tpl) return;
   if (tpl.type === 'roof_comparison') return autoFillRoofTier(tierKey);
+  if (tpl.type === 'alside_comparison') return autoFillAlsideTier(tierKey);
+  // Type is missing or wrong — infer from the tier's main product category.
+  const tier = (tpl.tiers || []).find(t => t.key === tierKey);
+  const mainProd = tier && PRODUCTS.find(p => p.id === tier.mainProductId);
+  if (mainProd && mainProd.cat === 'Roofing') return autoFillRoofTier(tierKey);
   return autoFillAlsideTier(tierKey);
 }
 
