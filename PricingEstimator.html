@@ -5167,7 +5167,7 @@ function buildFullPDFHtml() {
   const _r2First = (custName || '').trim().split(' ')[0] || 'there';
   const _r2ColorChips = (colors || []).map(c => `<div class="r2-cchip"><div class="r2-cl">${h(c.label)}</div><div class="r2-cv">${h(c.value)}</div></div>`).join('');
   const _r2Scope = ((quoteItems || []).map(it => `<div class="r2-si"><span class="r2-ck">&#10003;</span><span class="r2-st">${h(it.product.name)}${it.note ? ` &mdash; ${h(it.note)}` : ''}</span></div>`).join('')) || '<div class="r2-si"><span class="r2-ck">&#10003;</span><span class="r2-st">Complete installation as specified</span></div>';
-  const _r2PriceRows = (quoteItems || []).map(it => { const q = it.qty % 1 === 0 ? it.qty : parseFloat(it.qty).toFixed(2); return `<tr><td>${h(it.product.name)}</td><td>${q} ${h(it.product.unit || '')}</td><td>${fmt$(it.product.price * it.qty)}</td></tr>`; }).join('');
+  const _r2PriceRows = (quoteItems || []).map(it => { const q = it.qty % 1 === 0 ? it.qty : parseFloat(it.qty).toFixed(2); return `<tr><td>${h(it.product.name)}${it.note ? `<div style="font-size:10px;color:var(--r2muted)">${h(it.note)}</div>` : ''}</td><td style="text-align:right">${q} ${h(it.product.unit || '')}</td></tr>`; }).join('');
   const _r2FinBox = (useFinancing && _contractSelPlans.length) ? (function(){ const fp=_contractSelPlans[0]; const months=Math.round((parseFloat(fp.pl.term_years)||0)*12); return `<div class="r2-finbox"><div><div class="r2-fp">${h(fp.prov.name||'Renew Approved Financing')}</div><div class="r2-ft">${fp.pl.rate?('Fixed '+fp.pl.rate+'% APR'):''}${months?(' · '+months+'-month term'):''} · $0 down options available</div></div><div class="r2-fr"><div class="r2-est">Est.</div><div class="r2-amt">${fp.mo!=null?fmt$(fp.mo):'—'}<span>/mo</span></div></div></div>`; })() : '';
 
   const pgCover2 = pg(`
@@ -5209,7 +5209,7 @@ function buildFullPDFHtml() {
 
   const pgPricing2 = pg(`<div class="r2-pad">
     <div class="r2-head"><div><div class="r2-eyebrow">Your investment</div><h2 class="r2-sec">Pricing</h2></div><div class="r2-small" style="text-align:right">Quote #${h(qnum)}<br>${h(qdate)}</div></div>
-    <table class="r2-ptable"><thead><tr><th>Description</th><th>Qty</th><th>Amount</th></tr></thead><tbody>${_r2PriceRows}</tbody></table>
+    <table class="r2-ptable"><thead><tr><th>Description</th><th style="text-align:right">Qty</th></tr></thead><tbody>${_r2PriceRows}</tbody></table>
     <div class="r2-totbox">
       <div class="r2-tr"><span>Subtotal</span><span>${fmt$(subtotal)}</span></div>
       ${taxTotal > 0 ? `<div class="r2-tr"><span>Tax</span><span>${fmt$(taxTotal)}</span></div>` : ''}
