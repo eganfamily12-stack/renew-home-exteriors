@@ -256,10 +256,10 @@
   <a href="change-orders.html">🔄 Change Orders</a>
 </nav>
 
-<!-- HERO: satellite image + address overlay -->
+<!-- HERO: property photo + address overlay -->
 <div class="hero" id="heroSection">
   <div class="hero-placeholder" id="heroPlaceholder">🏠</div>
-  <img id="heroImg" class="hero-img" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover" alt="Property satellite view">
+  <img id="heroImg" class="hero-img" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover" alt="Property photo">
   <a id="mapsBtn" class="maps-btn" href="#" target="_blank" rel="noopener" style="display:none">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
     Open in Maps
@@ -526,7 +526,7 @@ async function loadProperty(anchorId) {
   renderCustomerInfo(anchorQuote);
 
   // 3. Fetch all quotes at this address (or by customer name if no address)
-  let quoteUrl = SB_URL + '/rest/v1/quotes?select=id,quote_number,customer_name,customer_address,customer_phone,customer_email,template_id,totals,status,created_at,updated_at,signing_status,signing_session_id,satellite_image_url,payment_data&order=created_at.desc&limit=200';
+  let quoteUrl = SB_URL + '/rest/v1/quotes?select=id,quote_number,customer_name,customer_address,customer_phone,customer_email,template_id,totals,status,created_at,updated_at,signing_status,signing_session_id,hero_photo_url,payment_data&order=created_at.desc&limit=200';
   if (addr) {
     quoteUrl += '&customer_address=eq.' + encodeURIComponent(addr);
   } else {
@@ -611,14 +611,13 @@ async function loadProperty(anchorId) {
     allPhotos = r3.ok ? (await r3.json()) : [];
   }
 
-  // 6. If any quote has a satellite image, use the best one
-  const withImg = allQuotes.find(q => q.satellite_image_url);
-  if (withImg && withImg.satellite_image_url) {
+  // 6. Use the most recent quote's Property Photo as the hero image
+  const withImg = allQuotes.find(q => q.hero_photo_url);
+  if (withImg && withImg.hero_photo_url) {
     const heroImg = document.getElementById('heroImg');
-    heroImg.src = withImg.satellite_image_url;
+    heroImg.src = withImg.hero_photo_url;
     heroImg.style.display = 'block';
     document.getElementById('heroPlaceholder').style.display = 'none';
-    document.getElementById('satCreditCard').style.display = 'block';
   }
 
   renderStats();
@@ -1013,7 +1012,7 @@ async function duplicateQuote(id) {
     status:           'draft',
     dimension_data:   q.dimension_data,
     payment_data:     q.payment_data,
-    satellite_image_url: q.satellite_image_url,
+    hero_photo_url:   q.hero_photo_url,
   };
 
   const ins = await fetch(SB_URL + '/rest/v1/quotes', {
