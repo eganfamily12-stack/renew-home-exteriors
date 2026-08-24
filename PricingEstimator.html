@@ -5334,8 +5334,9 @@ function buildFullPDFHtml() {
     '*{box-sizing:border-box;margin:0;padding:0}',
     'body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#fff}',
     '@page{size:letter;margin:0}',
-    '.page{width:8.5in;min-height:11in;padding:0.5in 0.6in;page-break-after:always;position:relative;overflow:hidden}',
+    '.page{width:8.5in;min-height:11in;padding:0.5in 0.6in;page-break-after:always;position:relative;overflow:hidden;margin:0 auto}',
     '.page:last-child{page-break-after:auto}',
+    '@media screen{body{background:#e8ecf0}.page{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.12);margin:16px auto}}',
     /* COVER */
     '.cover-header{background:#1a3a5c;color:#fff;padding:28px 36px 20px;border-radius:4px 4px 0 0}',
     '.cover-logo{font-size:22px;font-weight:800;letter-spacing:1px;color:#fff}',
