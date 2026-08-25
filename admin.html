@@ -1184,27 +1184,22 @@ async function addSection() {
 }
 
 async function uploadTemplatePDF(file) {
-  // Upload to Supabase Storage template-pdfs bucket
-  const path = `templates/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-  const res  = await fetch(
-    SUPABASE_URL + '/storage/v1/object/template-pdfs/' + path,
-    {
-      method:  'POST',
-      headers: {
-        'apikey':        SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + currentSession.access_token,
-        'Content-Type':  file.type || 'application/pdf',
-        'x-upsert':      'true'
-      },
-      body: file
-    }
-  );
+  // Route through the upload-pdf edge function (service role) — Storage rejects
+  // this project's ES256 user tokens on direct object writes.
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('mode', 'template');
+  const res = await fetch(SUPABASE_URL + '/functions/v1/upload-pdf', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + currentSession.access_token },
+    body: fd
+  });
+  const result = await res.json().catch(() => ({}));
   if (!res.ok) {
-    toast('PDF upload failed: ' + res.status, true);
+    toast('PDF upload failed: ' + (result.error || res.status), true);
     return null;
   }
-  const publicUrl = SUPABASE_URL + '/storage/v1/object/public/template-pdfs/' + path;
-  return { url: publicUrl, path };
+  return { url: result.url, path: result.path };
 }
 
 async function saveTemplate() {
@@ -1674,48 +1669,24 @@ async function uploadPDF() {
   btn.disabled = true;
   status.textContent = 'Uploading…';
 
-  // 1. Upload to Storage
-  const path   = `library/${cat}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-  const upRes  = await fetch(
-    SUPABASE_URL + '/storage/v1/object/template-pdfs/' + path,
-    {
-      method:  'POST',
-      headers: {
-        'apikey':        SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + currentSession.access_token,
-        'Content-Type':  'application/pdf',
-        'x-upsert':      'true'
-      },
-      body: file
-    }
-  );
-  if (!upRes.ok) {
-    toast('Storage upload failed: ' + upRes.status, true);
-    btn.disabled = false; status.textContent = '';
-    return;
-  }
+  // Route through the upload-pdf edge function (service role) — it performs the
+  // storage write + pdf_library insert. Direct Storage writes are rejected for
+  // this project's ES256 user tokens.
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('mode', 'library');
+  fd.append('label', label);
+  fd.append('category', cat);
 
-  const publicUrl = SUPABASE_URL + '/storage/v1/object/public/template-pdfs/' + path;
-
-  // 2. Insert record in pdf_library
-  const dbRes = await dbFetch('/rest/v1/pdf_library', {
+  const res = await fetch(SUPABASE_URL + '/functions/v1/upload-pdf', {
     method: 'POST',
-    body: JSON.stringify({
-      tenant_id:    '5249f9c0-9fca-46c8-896c-4e35be437024',
-      label,
-      filename:     file.name,
-      storage_path: path,
-      storage_url:  publicUrl,
-      file_size:    file.size,
-      category:     cat,
-      active:       true,
-      uploaded_by:  currentSession.user.id
-    }),
-    headers: { 'Prefer': 'return=minimal' }
+    headers: { 'Authorization': 'Bearer ' + currentSession.access_token },
+    body: fd
   });
+  const result = await res.json().catch(() => ({}));
 
-  if (!dbRes.ok) {
-    toast('DB insert failed: ' + dbRes.status, true);
+  if (!res.ok) {
+    toast(result.error || ('Upload failed: ' + res.status), true);
   } else {
     toast(`"${label}" uploaded ✓`);
     document.getElementById('ul_label').value = '';
