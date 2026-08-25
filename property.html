@@ -700,8 +700,8 @@ function renderQuotes() {
         <div class="qc-actions" onclick="event.stopPropagation()">
           <button class="btn btn-primary" onclick="openQuote('${q.id}')">📋 Open</button>
           ${q._signingSession?.token
-            ? `<a class="btn btn-ghost" href="https://comforting-truffle-faff94.netlify.app?token=${q._signingSession.token}" target="_blank" style="color:#2e7d32;font-weight:700">📄 View Signed</a>
-               <button class="btn btn-ghost" onclick="window.open('https://comforting-truffle-faff94.netlify.app?token=${q._signingSession.token}','_blank')" style="color:#2e7d32">🖨 Print Signed</button>`
+            ? `<a class="btn btn-ghost" href="https://estbuilder.jobguzzler.com?token=${q._signingSession.token}" target="_blank" style="color:#2e7d32;font-weight:700">📄 View Signed</a>
+               <button class="btn btn-ghost" onclick="window.open('https://estbuilder.jobguzzler.com?token=${q._signingSession.token}','_blank')" style="color:#2e7d32">🖨 Print Signed</button>`
             : `<button class="btn btn-ghost" onclick="printQuoteFromProperty('${q.id}')">🖨 Print</button>`}
           <button class="btn btn-ghost"   onclick="openCOForQuote('${q.id}')">🔄 Add CO</button>
           <select class="status-select" onchange="updateStatus('${q.id}', this.value)" style="color:${statusColor(q.status)}">
@@ -750,8 +750,8 @@ function renderCOs() {
       <td>
         <a href="change-orders.html?co_id=${co.id}" class="btn btn-ghost">Open ↗</a>
         ${co._signingSession?.token
-          ? `<a class="btn btn-ghost" href="https://comforting-truffle-faff94.netlify.app?token=${co._signingSession.token}" target="_blank" style="color:#2e7d32;font-weight:700">📄 View Signed</a>
-             <button class="btn btn-ghost" onclick="window.open('https://comforting-truffle-faff94.netlify.app?token=${co._signingSession.token}','_blank')" style="color:#2e7d32">🖨 Print</button>`
+          ? `<a class="btn btn-ghost" href="https://estbuilder.jobguzzler.com?token=${co._signingSession.token}" target="_blank" style="color:#2e7d32;font-weight:700">📄 View Signed</a>
+             <button class="btn btn-ghost" onclick="window.open('https://estbuilder.jobguzzler.com?token=${co._signingSession.token}','_blank')" style="color:#2e7d32">🖨 Print</button>`
           : ''}
       </td>
     </tr>`;

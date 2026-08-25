@@ -9,7 +9,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL          = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const SIGNING_PAGE_URL      = Deno.env.get('SIGNING_PAGE_URL') || ''
+const SIGNING_PAGE_URL      = 'https://estbuilder.jobguzzler.com'  // customer signing page host (hardcoded; overrides old SIGNING_PAGE_URL secret)
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
