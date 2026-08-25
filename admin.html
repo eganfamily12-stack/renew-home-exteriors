@@ -547,15 +547,24 @@
 
       <hr style="margin:16px 0;border-color:var(--border)">
 
-      <!-- SECTION BUILDER -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <strong style="font-size:13px">Contract Sections</strong>
-        <button class="btn btn-ghost btn-sm" onclick="openAddSection()">+ Add Block</button>
+      <!-- PROPOSAL DESIGNER -->
+      <strong style="font-size:13px">Proposal Designer</strong>
+      <div style="font-size:11px;color:var(--muted);margin:4px 0 10px">Controls which pages appear in the estimate proposal &amp; signed contract, and their order. This is what the estimator actually renders.</div>
+      <div class="form-group">
+        <label>Proposal theme</label>
+        <select id="tm_theme" onchange="dzThemeChange()">
+          <option value="classic">Classic</option>
+          <option value="renew2026">Renew 2026</option>
+        </select>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
-        Drag sections up/down to set the order they appear in the estimate and contract.
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin:6px 0 10px;cursor:pointer">
+        <input type="checkbox" id="tm_customize" onchange="dzCustomizeToggle()"> Customize which pages appear &amp; their order
+      </label>
+      <div id="dzPanel" style="display:none">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Reorder with ▲▼, remove with ✕. Cover and Authorization are required. Add a library PDF as its own page.</div>
+        <div class="section-list" id="dzList"></div>
+        <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="dzOpenAdd()">+ Add Page</button></div>
       </div>
-      <div class="section-list" id="sectionList"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('templateModal')">Cancel</button>
@@ -564,39 +573,41 @@
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════ ADD SECTION MODAL -->
+<!-- ═══ ADD PAGE MODAL -->
 <div class="modal-overlay hidden" id="sectionModal">
   <div class="modal" style="max-width:480px">
     <div class="modal-header">
-      <h3>Add Block</h3>
+      <h3>Add Page</h3>
       <button class="modal-close" onclick="closeModal('sectionModal')">×</button>
     </div>
     <div class="modal-body">
-      <div class="block-type-picker" id="blockTypePicker">
-        <!-- populated by JS -->
+      <div class="form-group">
+        <label>Page</label>
+        <select id="dzAddSelect" onchange="dzAddChange()"></select>
       </div>
-      <div id="sectionForm" style="display:none;margin-top:14px">
-        <div class="form-group">
-          <label id="sectionFormLabel">Label</label>
-          <input type="text" id="sf_label" placeholder="Section label">
-        </div>
-        <div class="form-group" id="sf_content_group" style="display:none">
-          <label>Content</label>
-          <textarea id="sf_content" style="min-height:80px"></textarea>
-        </div>
-        <div class="form-group" id="sf_pdf_group" style="display:none">
-          <label>PDF File</label>
-          <input type="file" id="sf_pdf" accept=".pdf" style="border:none;padding:0;background:none">
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">PDF will be uploaded to Supabase Storage</div>
-          <div id="sf_pdf_existing" style="display:none;font-size:11px;margin-top:4px">
-            Current: <span id="sf_pdf_name" style="color:var(--primary)"></span>
-          </div>
-        </div>
+      <div class="form-group" id="dzPdfGroup" style="display:none">
+        <label>PDF from library</label>
+        <select id="dzPdfSelect"></select>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Its pages are embedded into the proposal. Upload PDFs in the PDF Library tab.</div>
+      </div>
+      <div class="form-group" id="dzImgGroup" style="display:none">
+        <label>Image URL</label>
+        <input type="text" id="dzImgSrc" placeholder="https://…/page.png">
+        <label style="margin-top:8px">Caption (optional)</label>
+        <input type="text" id="dzImgCap" placeholder="">
+      </div>
+      <div class="form-group" id="dzHeadGroup" style="display:none">
+        <label>Heading text</label>
+        <input type="text" id="dzHeadText" placeholder="Section heading">
+      </div>
+      <div class="form-group" id="dzHtmlGroup" style="display:none">
+        <label>Custom HTML (supports {{customer.name}}, {{quote.total}}, …)</label>
+        <textarea id="dzHtml" style="min-height:90px"></textarea>
       </div>
     </div>
-    <div class="modal-footer" id="sectionModalFooter" style="display:none">
+    <div class="modal-footer" id="dzAddFooter" style="display:none">
       <button class="btn btn-ghost" onclick="closeModal('sectionModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="addSection()">Add Block</button>
+      <button class="btn btn-primary" onclick="dzAddSelected()">Add Page</button>
     </div>
   </div>
 </div>
@@ -1021,8 +1032,7 @@ function openAddTemplate() {
     document.getElementById(id).value = '';
   });
   document.getElementById('tm_type').value = 'roof';
-  editingSections = [];
-  renderSectionList();
+  dzInit(null);
   openModal('templateModal');
 }
 
@@ -1040,147 +1050,167 @@ function openEditTemplate(id) {
   document.getElementById('tm_description').value  = td.description || '';
   document.getElementById('tm_warrantyBase').value = td.warrantyBase || '';
   document.getElementById('tm_warranty').value     = td.warranty || '';
-  editingSections = JSON.parse(JSON.stringify(td.sections || []));
-  if (editingSections.length === 0) {
-    // Pre-populate with sensible defaults from existing template fields
-    editingSections = buildDefaultSections(td);
-  }
-  renderSectionList();
+  dzInit(td);
   openModal('templateModal');
 }
 
-function buildDefaultSections(td) {
-  // Convert existing template fields into a default section stack
-  const sections = [
-    { type: 'job_details',      order: 1,  label: 'Customer & Job Details' },
-    { type: 'estimate_details', order: 2,  label: 'Estimate / Line Items' },
-  ];
-  if (td.colorFields && td.colorFields.length)
-    sections.push({ type: 'color_selections', order: 3, label: 'Color Selections' });
-  if (td.description)
-    sections.push({ type: 'description', order: sections.length + 1, label: 'Project Scope', content: td.description });
-  if (td.warrantyBase || td.warranty)
-    sections.push({ type: 'warranty', order: sections.length + 1, label: 'Warranty' });
-  sections.push({ type: 'timeline',  order: sections.length + 1, label: 'Project Timeline' });
-  sections.push({ type: 'signature', order: sections.length + 1, label: 'Signatures' });
-  return sections;
+function dzTheme_() { return document.getElementById('tm_theme').value; }
+
+const PAGE_CATALOG = {
+  cover:         { label: 'Cover',              classic: 'cover',         renew: 'cover2' },
+  intro:         { label: 'Intro / Why Us',     classic: 'intro',         renew: 'intro2' },
+  reviews:       { label: 'Reviews',            classic: 'reviews',       renew: null },
+  inspection:    { label: 'Inspection',         classic: 'inspection',    renew: null },
+  tiers:         { label: 'Comparison Tiers',   classic: 'product',       renew: 'tiers2' },
+  scope:         { label: 'Scope of Work',      classic: 'product',       renew: 'product2' },
+  pricing:       { label: 'Pricing',            classic: 'pricing',       renew: 'pricing2' },
+  expect:        { label: 'What to Expect',     classic: 'expect',        renew: null },
+  terms:         { label: 'Terms & Conditions', classic: 'terms1',        renew: 'terms2' },
+  terms_extra:   { label: 'Terms (page 2)',     classic: 'terms2',        renew: null },
+  terms_extra3:  { label: 'Terms (page 3)',     classic: 'terms3',        renew: null },
+  epa1:          { label: 'EPA Lead (1)',       classic: 'epa1',          renew: null },
+  epa2:          { label: 'EPA Lead (2)',       classic: 'epa2',          renew: null },
+  authorization: { label: 'Authorization',      classic: 'authorization', renew: 'authorization2' },
+};
+const REQUIRED_PAGES = ['cover', 'authorization'];
+const DEFAULT_PAGES = {
+  classic:   ['cover','intro','reviews','inspection','scope','pricing','expect','authorization','terms','terms_extra','terms_extra3','epa1','epa2'],
+  renew2026: ['cover','intro','scope','pricing','terms','authorization'],
+};
+let dzPages = [];
+
+function pageBlockName(key, theme) {
+  const c = PAGE_CATALOG[key]; if (!c) return null;
+  return theme === 'renew2026' ? c.renew : c.classic;
 }
 
-const BLOCK_TYPES = [
-  { type: 'pdf',              icon: '📄', label: 'PDF Attachment',   desc: 'Upload intro letter, T&C, warranty cert, etc.' },
-  { type: 'job_details',     icon: '📋', label: 'Job Details',       desc: 'Customer name, address, quote number, date' },
-  { type: 'estimate_details',icon: '💰', label: 'Estimate / Pricing',desc: 'Full line-item table with totals' },
-  { type: 'description',     icon: '📝', label: 'Project Scope',     desc: 'Job description text block' },
-  { type: 'warranty',        icon: '⭐', label: 'Warranty',           desc: 'Auto warranty text (base or upgrade)' },
-  { type: 'color_selections',icon: '🎨', label: 'Color Selections',  desc: 'Selected colors for the job' },
-  { type: 'timeline',        icon: '📅', label: 'Timeline',          desc: 'Project start/completion timeline' },
-  { type: 'financing',       icon: '☀️', label: 'Financing',          desc: 'Sunlight Financial monthly payment block' },
-  { type: 'text',            icon: '✏️', label: 'Text Block',         desc: 'Free-form notes or terms excerpt' },
-  { type: 'signature',       icon: '✍️', label: 'Signatures',         desc: 'Customer + rep signature blocks' },
-];
-
-function renderSectionList() {
-  const el = document.getElementById('sectionList');
-  if (!editingSections.length) {
-    el.innerHTML = '<div style="font-size:12px;color:#999;text-align:center;padding:12px">No sections yet — click "+ Add Block" to build the document structure</div>';
-    return;
-  }
-  const sorted = [...editingSections].sort((a, b) => a.order - b.order);
-  el.innerHTML = sorted.map((s, i) => {
-    const bt = BLOCK_TYPES.find(b => b.type === s.type) || { icon: '📄', label: s.type };
-    const pdfInfo = s.type === 'pdf' && s.filename ? ` <span style="color:var(--muted);font-size:10px">(${s.filename})</span>` : '';
-    return `
-      <div class="section-item">
-        <span class="s-icon">${bt.icon}</span>
-        <div style="flex:1">
-          <div class="s-label">${s.label || bt.label}${pdfInfo}</div>
-          <div class="s-type">${s.type}</div>
-        </div>
-        <div class="s-actions">
-          <button class="s-move" title="Move up"   onclick="moveSection(${i}, -1)" ${i === 0 ? 'disabled style=opacity:.3' : ''}>▲</button>
-          <button class="s-move" title="Move down" onclick="moveSection(${i},  1)" ${i === sorted.length - 1 ? 'disabled style=opacity:.3' : ''}>▼</button>
-          <button class="s-del" title="Remove" onclick="removeSection(${i})">✕</button>
-        </div>
-      </div>`;
+function dzInit(td) {
+  const theme = (td && td.proposalTheme === 'renew2026') ? 'renew2026' : 'classic';
+  document.getElementById('tm_theme').value = theme;
+  const hasBlocks = td && Array.isArray(td.documentBlocks) && td.documentBlocks.length;
+  document.getElementById('tm_customize').checked = !!hasBlocks;
+  dzPages = hasBlocks ? blocksToPages(td.documentBlocks, theme) : [];
+  dzSyncPanel();
+}
+function dzCustomizeToggle() {
+  if (document.getElementById('tm_customize').checked && !dzPages.length)
+    dzPages = DEFAULT_PAGES[dzTheme_()].map(k => ({ key: k }));
+  dzSyncPanel();
+}
+function dzThemeChange() {
+  const theme = dzTheme_();
+  dzPages = dzPages.filter(p => p.key === '__custom' || p.key === '__raw' || pageBlockName(p.key, theme) != null);
+  if (document.getElementById('tm_customize').checked && !dzPages.length)
+    dzPages = DEFAULT_PAGES[theme].map(k => ({ key: k }));
+  dzSyncPanel();
+}
+function dzSyncPanel() {
+  const on = document.getElementById('tm_customize').checked;
+  document.getElementById('dzPanel').style.display = on ? 'block' : 'none';
+  if (on) dzRender();
+}
+function dzRender() {
+  const el = document.getElementById('dzList');
+  if (!dzPages.length) { el.innerHTML = '<div style="font-size:12px;color:#999;text-align:center;padding:12px">No pages — click "+ Add Page".</div>'; return; }
+  const theme = dzTheme_();
+  el.innerHTML = dzPages.map((p, i) => {
+    let icon='📄', label, sub;
+    if (p.key === '__custom') {
+      icon = p.type==='pdf'?'📎':p.type==='image'?'🖼️':p.type==='heading'?'🔖':'✏️';
+      label = p.type==='pdf'?('PDF: '+(p.label||'attachment')):p.type==='image'?('Image'+(p.caption?' — '+p.caption:'')):p.type==='heading'?('Heading: '+(p.text||'')):'Custom HTML';
+      sub = p.type;
+    } else if (p.key === '__raw') { label='Custom block'; sub=String(p.raw); }
+    else { label=(PAGE_CATALOG[p.key]||{}).label||p.key; sub=pageBlockName(p.key,theme)||p.key; }
+    const req = REQUIRED_PAGES.includes(p.key);
+    return '<div class="section-item"><span class="s-icon">'+icon+'</span>'
+      +'<div style="flex:1"><div class="s-label">'+label+(req?' <span style="color:var(--muted);font-size:9px">(required)</span>':'')+'</div><div class="s-type">'+sub+'</div></div>'
+      +'<div class="s-actions">'
+      +'<button class="s-move" onclick="dzMove('+i+',-1)" '+(i===0?'disabled style=opacity:.3':'')+'>▲</button>'
+      +'<button class="s-move" onclick="dzMove('+i+',1)" '+(i===dzPages.length-1?'disabled style=opacity:.3':'')+'>▼</button>'
+      +'<button class="s-del" onclick="dzRemove('+i+')" '+(req?'disabled style=opacity:.3':'')+'>✕</button>'
+      +'</div></div>';
   }).join('');
 }
+function dzMove(i, dir) { const j=i+dir; if (j<0||j>=dzPages.length) return; const t=dzPages[i]; dzPages[i]=dzPages[j]; dzPages[j]=t; dzRender(); }
+function dzRemove(i) { if (dzPages[i] && REQUIRED_PAGES.includes(dzPages[i].key)) return; dzPages.splice(i,1); dzRender(); }
 
-function moveSection(idx, dir) {
-  const sorted = [...editingSections].sort((a, b) => a.order - b.order);
-  const target = sorted[idx];
-  const swap   = sorted[idx + dir];
-  if (!swap) return;
-  const tmp    = target.order;
-  target.order = swap.order;
-  swap.order   = tmp;
-  renderSectionList();
+function dzOpenAdd() {
+  const theme = dzTheme_();
+  const used = new Set(dzPages.filter(p=>p.key!=='__custom'&&p.key!=='__raw').map(p=>p.key));
+  const opts = Object.keys(PAGE_CATALOG).filter(k=>pageBlockName(k,theme)!=null && !used.has(k))
+    .map(k=>'<option value="page:'+k+'">'+PAGE_CATALOG[k].label+'</option>').join('');
+  const custom = '<option value="custom:pdf">PDF from library…</option><option value="custom:image">Image page…</option><option value="custom:heading">Heading page…</option><option value="custom:html">Custom HTML page…</option>';
+  document.getElementById('dzAddSelect').innerHTML = '<option value="">— choose —</option>'+opts+'<optgroup label="Custom">'+custom+'</optgroup>';
+  document.getElementById('dzAddSelect').value=''; dzAddChange(); loadPDFLibraryForPicker(); openModal('sectionModal');
+}
+function dzAddChange() {
+  const v=document.getElementById('dzAddSelect').value;
+  document.getElementById('dzPdfGroup').style.display = v==='custom:pdf'?'block':'none';
+  document.getElementById('dzImgGroup').style.display = v==='custom:image'?'block':'none';
+  document.getElementById('dzHeadGroup').style.display= v==='custom:heading'?'block':'none';
+  document.getElementById('dzHtmlGroup').style.display= v==='custom:html'?'block':'none';
+  document.getElementById('dzAddFooter').style.display= v?'flex':'none';
+}
+async function loadPDFLibraryForPicker() {
+  try { if (!Array.isArray(allPDFs) || !allPDFs.length) await loadPDFLibrary(); } catch(e){}
+  const sel=document.getElementById('dzPdfSelect');
+  const list=(Array.isArray(allPDFs)?allPDFs:[]).filter(p=>p.active!==false);
+  sel.innerHTML = list.length ? list.map(p=>'<option value="'+p.id+'">'+((p.label||p.filename))+' — '+(p.category||'general')+'</option>').join('')
+    : '<option value="">(no PDFs in library — upload one in the PDF Library tab)</option>';
+}
+function dzAddSelected() {
+  const v=document.getElementById('dzAddSelect').value; if(!v) return;
+  if (v.indexOf('page:')===0) dzPages.push({key:v.slice(5)});
+  else if (v==='custom:pdf') {
+    const id=document.getElementById('dzPdfSelect').value;
+    const pdf=(allPDFs||[]).find(p=>String(p.id)===String(id));
+    if(!pdf){toast('Pick a PDF from the library',true);return;}
+    dzPages.push({key:'__custom',type:'pdf',src:pdf.storage_url,label:pdf.label||pdf.filename});
+  } else if (v==='custom:image') {
+    const src=document.getElementById('dzImgSrc').value.trim(); if(!src){toast('Image URL required',true);return;}
+    dzPages.push({key:'__custom',type:'image',src:src,caption:document.getElementById('dzImgCap').value.trim()});
+  } else if (v==='custom:heading') dzPages.push({key:'__custom',type:'heading',text:document.getElementById('dzHeadText').value.trim()});
+  else if (v==='custom:html') dzPages.push({key:'__custom',type:'html',html:document.getElementById('dzHtml').value});
+  dzRender(); closeModal('sectionModal');
 }
 
-function removeSection(idx) {
-  const sorted = [...editingSections].sort((a, b) => a.order - b.order);
-  editingSections.splice(editingSections.indexOf(sorted[idx]), 1);
-  // Re-number
-  editingSections.sort((a, b) => a.order - b.order).forEach((s, i) => s.order = i + 1);
-  renderSectionList();
+function pagesToBlocks(pages, theme) {
+  const out=[];
+  pages.forEach(p=>{
+    if (p.key==='__raw') { out.push(p.raw); return; }
+    if (p.key==='__custom') {
+      if (p.type==='pdf') out.push({type:'pdf',src:p.src,label:p.label||''});
+      else if (p.type==='image') out.push({type:'image',src:p.src,caption:p.caption||''});
+      else if (p.type==='heading') out.push({type:'heading',text:p.text||''});
+      else if (p.type==='html') out.push({type:'custom_html',html:p.html||''});
+    } else { const name=pageBlockName(p.key,theme); if(name) out.push(name); }
+  });
+  return out;
 }
-
-function openAddSection() {
-  pendingBlockType = null;
-  document.getElementById('sectionForm').style.display        = 'none';
-  document.getElementById('sectionModalFooter').style.display = 'none';
-  document.getElementById('sf_label').value   = '';
-  document.getElementById('sf_content').value = '';
-  document.getElementById('sf_pdf_group').style.display     = 'none';
-  document.getElementById('sf_content_group').style.display = 'none';
-
-  document.getElementById('blockTypePicker').innerHTML = BLOCK_TYPES.map(bt => `
-    <div class="block-type-btn" onclick="selectBlockType('${bt.type}')">
-      <div class="bt-icon">${bt.icon}</div>
-      <div class="bt-label">${bt.label}</div>
-      <div class="bt-desc">${bt.desc}</div>
-    </div>`).join('');
-  openModal('sectionModal');
-}
-
-function selectBlockType(type) {
-  pendingBlockType = type;
-  const bt = BLOCK_TYPES.find(b => b.type === type);
-  document.getElementById('sectionFormLabel').textContent       = bt.label + ' — Label';
-  document.getElementById('sf_label').value                     = bt.label;
-  document.getElementById('sectionForm').style.display          = 'block';
-  document.getElementById('sectionModalFooter').style.display   = 'flex';
-  document.getElementById('sf_content_group').style.display     = type === 'description' || type === 'text' ? 'block' : 'none';
-  document.getElementById('sf_pdf_group').style.display         = type === 'pdf' ? 'block' : 'none';
-  document.getElementById('sf_pdf_existing').style.display      = 'none';
-  document.getElementById('blockTypePicker').innerHTML          = '';
-}
-
-async function addSection() {
-  if (!pendingBlockType) return;
-  const label   = document.getElementById('sf_label').value.trim() || pendingBlockType;
-  const content = document.getElementById('sf_content').value.trim();
-  const section = {
-    type:  pendingBlockType,
-    order: editingSections.length + 1,
-    label
-  };
-  if (content)              section.content  = content;
-
-  // PDF upload
-  if (pendingBlockType === 'pdf') {
-    const file = document.getElementById('sf_pdf').files[0];
-    if (file) {
-      const uploadResult = await uploadTemplatePDF(file);
-      if (uploadResult) {
-        section.storageUrl = uploadResult.url;
-        section.filename   = file.name;
-      }
+function blocksToPages(blocks, theme) {
+  const pages=[];
+  blocks.forEach(b=>{
+    if (typeof b==='string') {
+      let key=null;
+      for (const k in PAGE_CATALOG){ if(pageBlockName(k,theme)===b){key=k;break;} }
+      if(!key) for (const k in PAGE_CATALOG){ if(PAGE_CATALOG[k].classic===b||PAGE_CATALOG[k].renew===b){key=k;break;} }
+      pages.push(key?{key:key}:{key:'__raw',raw:b});
+    } else if (b && typeof b==='object') {
+      if (b.type==='pdf') pages.push({key:'__custom',type:'pdf',src:b.src,label:b.label||''});
+      else if (b.type==='image') pages.push({key:'__custom',type:'image',src:b.src,caption:b.caption||''});
+      else if (b.type==='heading') pages.push({key:'__custom',type:'heading',text:b.text||''});
+      else if (b.type==='custom_html') pages.push({key:'__custom',type:'html',html:b.html||''});
+      else { let key=null; for(const k in PAGE_CATALOG){ if(PAGE_CATALOG[k].classic===b.type||PAGE_CATALOG[k].renew===b.type){key=k;break;} } pages.push(key?{key:key}:{key:'__raw',raw:b}); }
     }
-  }
-
-  editingSections.push(section);
-  renderSectionList();
-  closeModal('sectionModal');
+  });
+  return pages;
+}
+function dzCollect() {
+  const theme=dzTheme_();
+  if (!document.getElementById('tm_customize').checked) return {valid:true, proposalTheme:theme, documentBlocks:null};
+  for (const req of REQUIRED_PAGES) if(!dzPages.some(p=>p.key===req))
+    return {valid:false, error:'The '+((PAGE_CATALOG[req]||{}).label)+' page is required.'};
+  return {valid:true, proposalTheme:theme, documentBlocks:pagesToBlocks(dzPages,theme)};
 }
 
 async function uploadTemplatePDF(file) {
@@ -1211,7 +1241,8 @@ async function saveTemplate() {
   // Fetch existing template_data to preserve fields we don't edit here
   const existing    = allTemplates.find(t => t.id === id);
   const existingTD  = existing?.template_data || {};
-  const sections    = [...editingSections].sort((a, b) => a.order - b.order);
+  const dz = dzCollect();
+  if (!dz.valid) { toast(dz.error, true); return; }
 
   // A comparison template (roof_comparison / alside_comparison) carries its behavior in its `type`.
   // The plain Type dropdown must never overwrite that — otherwise the estimator routes its Auto-Fill
@@ -1230,8 +1261,12 @@ async function saveTemplate() {
     description:  document.getElementById('tm_description').value.trim(),
     warrantyBase: document.getElementById('tm_warrantyBase').value.trim() || undefined,
     warranty:     document.getElementById('tm_warranty').value.trim(),
-    sections
   };
+  if (dz.proposalTheme === 'renew2026') template_data.proposalTheme = 'renew2026';
+  else delete template_data.proposalTheme;
+  if (dz.documentBlocks) template_data.documentBlocks = dz.documentBlocks;
+  else delete template_data.documentBlocks;
+  delete template_data.sections;
 
   if (id) {
     // Update

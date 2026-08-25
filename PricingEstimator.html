@@ -330,6 +330,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="RHE Estimator">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";}</script>
 </head>
 <body>
 
@@ -1059,137 +1061,137 @@ window.addEventListener('load', loadGoogleAutocomplete);
 // PRODUCT DATA (hardcoded fallback — overridden by Supabase on load)
 // ============================================================
 let PRODUCTS = [
-  {id:'17dbb335',name:'Metal Roof',unit:'SQ',price:912.50,mat:180,labor:185,margin:60,tax:'n',cat:'Roofing'},
+  {id:'17dbb335',name:'Metal Roof',unit:'SQ',price:1250,mat:250,labor:250,margin:60,tax:'n',cat:'Roofing'},
   {id:'ab13a53b',name:'Detached Garage Roof — IKO',unit:'SQ',price:484.44,mat:118,labor:100,margin:55,tax:'n',cat:'Roofing'},
   {id:'7c14469e',name:'Detached Garage Roof — GAF',unit:'SQ',price:500,mat:null,labor:null,margin:54,tax:'n',cat:'Roofing'},
-  {id:'gafhz',name:'GAF HDZ Shingles',unit:'SQ',price:353.86,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'ikocam',name:'IKO Cambridge Shingles',unit:'SQ',price:335.39,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
+  {id:'gafhz',name:'GAF HDZ Shingles',unit:'SQ',price:418.19,mat:130,labor:100,margin:45,tax:'n',cat:'Roofing'},
+  {id:'ikocam',name:'IKO Cambridge Shingles',unit:'SQ',price:396.37,mat:118,labor:100,margin:45,tax:'n',cat:'Roofing'},
   {id:'975bec88',name:'Decking Replacement (per sheet)',unit:'EA',price:65.22,mat:15,labor:15,margin:54,tax:'n',cat:'Roofing'},
-  {id:'redeck',name:'Redeck (per SQ)',unit:'SQ',price:220,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'extra',name:'Extra Layer Removal (2nd layer)',unit:'SQ',price:45,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'steep1',name:'Steep Pitch Surcharge (7-10)',unit:'SQ',price:30,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'steep2',name:'Very Steep Pitch Surcharge (11+)',unit:'SQ',price:40,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'slateco',name:'Slate / Clay / Shake Tear Off',unit:'SQ',price:320,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'gafme',name:'GAF Master Elite Lifetime Warranty',unit:'SQ',price:250.01,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'pealnseal',name:'Peel & Seal Flat Roof',unit:'SQ',price:560,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'flat',name:'Flat Roof Seam & Crack Repair',unit:'EA',price:400,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'silicone',name:'Renew Silicone Seal — Commercial Roof',unit:'SQ',price:600,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
+  {id:'redeck',name:'Redeck (per SQ)',unit:'SQ',price:220,mat:null,labor:null,margin:50,tax:'n',cat:'Roofing'},
+  {id:'extra',name:'Extra Layer Removal (2nd layer)',unit:'SQ',price:45,mat:null,labor:null,margin:50,tax:'n',cat:'Roofing'},
+  {id:'steep1',name:'Steep Pitch Surcharge (7-10)',unit:'SQ',price:30,mat:null,labor:15,margin:50,tax:'n',cat:'Roofing'},
+  {id:'steep2',name:'Very Steep Pitch Surcharge (11+)',unit:'SQ',price:40,mat:null,labor:20,margin:50,tax:'n',cat:'Roofing'},
+  {id:'slateco',name:'Slate / Clay / Shake Tear Off',unit:'SQ',price:320,mat:null,labor:null,margin:0,tax:'n',cat:'Roofing'},
+  {id:'gafme',name:'GAF Master Elite Lifetime Warranty',unit:'SQ',price:250.01,mat:150,labor:0,margin:40,tax:'n',cat:'Roofing'},
+  {id:'pealnseal',name:'Peel & Seal Flat Roof',unit:'SQ',price:560,mat:null,labor:null,margin:50,tax:'n',cat:'Roofing'},
+  {id:'flat',name:'Flat Roof Seam & Crack Repair',unit:'EA',price:400,mat:null,labor:null,margin:54,tax:'n',cat:'Roofing'},
+  {id:'silicone',name:'Renew Silicone Seal — Commercial Roof',unit:'SQ',price:600,mat:null,labor:null,margin:54,tax:'n',cat:'Roofing'},
   {id:'f9748aee',name:'Drip Edge',unit:'LF',price:1.54,mat:1,labor:0,margin:35,tax:'n',cat:'Roofing'},
-  {id:'icewater',name:'Ice & Water Shield',unit:'LF',price:1.82,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'ridge',name:'New Ridge Vent & Cap',unit:'EA',price:24.62,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'leading',name:'Leading Edge Starter Strip',unit:'LF',price:3.33,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'step',name:'Step Flashing',unit:'LF',price:7,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'chimney',name:'Chimney Flashing',unit:'EA',price:436.93,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'skylight',name:'Skylight',unit:'EA',price:2500,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'skylightflash',name:'Skylight Flashing Only',unit:'EA',price:300,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'skylightrem',name:'Skylight Removal',unit:'EA',price:350,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'pipebo',name:'Pipe Boot DuraFlo — Black',unit:'EA',price:75,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'catwalks',name:'Cat Walks',unit:'EA',price:1125,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'solarfan',name:'Solar Powered Attic Fan',unit:'SQ',price:500,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'nails',name:'Nails with Cap',unit:'BX',price:131.67,mat:null,labor:null,margin:null,tax:'n',cat:'Roofing'},
-  {id:'590da916',name:'Charter Oak Siding',unit:'SQ',price:627.28,mat:195,labor:150,margin:45,tax:'n',cat:'Siding'},
-  {id:'3bbe038e',name:'Ascend Fiber Composite Siding',unit:'SQ',price:968,mat:309,labor:175,margin:50,tax:'n',cat:'Siding'},
-  {id:'d402c18e',name:'Ascend Board & Batten',unit:'SQ',price:1300,mat:410,labor:175,margin:55,tax:'n',cat:'Siding'},
-  {id:'b83178b4',name:'Board N Batten Siding',unit:'SQ',price:1020,mat:350,labor:160,margin:50,tax:'n',cat:'Siding'},
-  {id:'odyssey',name:'Odyssey Plus Siding',unit:'SQ',price:578.19,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'odysseywrap',name:'Odyssey Plus w/ House Wrap',unit:'SQ',price:536.37,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'renewinv',name:'Renew Investor Builder Grade Siding',unit:'SQ',price:487.28,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'tando',name:'Tando Siding',unit:'SQ',price:2928.57,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'tandoc',name:'Tando Corners / Ledges',unit:'LF',price:71.43,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'cultstone',name:'Culture Stone',unit:'SQ',price:6300,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'cultstledge',name:'Culture Stone Ledges',unit:'LF',price:200,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'shake',name:'Shake / Scallop Siding',unit:'SQ',price:1166.67,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'fullback',name:'Full Back Siding Charter Oak (Drop In)',unit:'SQ',price:1100,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'fermout',name:'Fer Out Over Brick / Stucco',unit:'SQ',price:397.5,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'tearoff',name:'Tear Off Brick',unit:'LF',price:37.5,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'dormersid',name:'Dormer Siding',unit:'EA',price:727.28,mat:150,labor:250,margin:45,tax:'n',cat:'Siding'},
-  {id:'c0dea62f',name:'Detached Garage Siding — Charter Oak',unit:'SQ',price:800,mat:250,labor:150,margin:50,tax:'n',cat:'Siding'},
-  {id:'84d721fe',name:'Detached Garage Siding — Odyssey Plus',unit:'SQ',price:700,mat:200,labor:150,margin:50,tax:'n',cat:'Siding'},
-  {id:'sidcorn',name:'Siding Corners',unit:'EA',price:60,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'sidfastn',name:'Siding Fasteners',unit:'BX',price:144.44,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'mountblk',name:'Mounting Blocks — Lights & Water',unit:'EA',price:55.56,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'shutters',name:'Shutters',unit:'EA',price:237.5,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'rrshut',name:'R&R Shutters',unit:'EA',price:44.44,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'rottwood',name:'Rotten Wood Repair',unit:'SQ',price:288,mat:null,labor:null,margin:null,tax:'n',cat:'Siding'},
-  {id:'gutter5',name:'Gutter 5-inch',unit:'LF',price:14,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
-  {id:'gutter6',name:'Gutters 6-inch',unit:'LF',price:20,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
-  {id:'gutterds',name:'Gutter Down Spouts',unit:'LF',price:14,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
-  {id:'guttercover',name:'Gutter Cover SureFlo',unit:'LF',price:15,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
-  {id:'facia',name:'Fascia',unit:'LF',price:12.5,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
-  {id:'faciabrd',name:'Fascia Board per Ft',unit:'LF',price:12.22,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
-  {id:'pvfacia',name:'PVC Fascia',unit:'LF',price:16.67,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
-  {id:'slipfacia',name:'Slip Cap Fascia',unit:'LF',price:12,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
-  {id:'freezebrd',name:'Install Freeze Board',unit:'LF',price:28.89,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
-  {id:'beamcap',name:'Beam Capping (per 10ft)',unit:'EA',price:345,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
+  {id:'icewater',name:'Ice & Water Shield',unit:'LF',price:1.82,mat:1,labor:0,margin:45,tax:'n',cat:'Roofing'},
+  {id:'ridge',name:'New Ridge Vent & Cap',unit:'EA',price:24.62,mat:13,labor:3,margin:35,tax:'n',cat:'Roofing'},
+  {id:'leading',name:'Leading Edge Starter Strip',unit:'LF',price:3.33,mat:2,labor:0,margin:40,tax:'n',cat:'Roofing'},
+  {id:'step',name:'Step Flashing',unit:'LF',price:7,mat:1.2,labor:3,margin:40,tax:'n',cat:'Roofing'},
+  {id:'chimney',name:'Chimney Flashing',unit:'EA',price:436.93,mat:164,labor:120,margin:35,tax:'n',cat:'Roofing'},
+  {id:'skylight',name:'Skylight',unit:'EA',price:2500,mat:null,labor:null,margin:50,tax:'n',cat:'Roofing'},
+  {id:'skylightflash',name:'Skylight Flashing Only',unit:'EA',price:300,mat:null,labor:null,margin:50,tax:'n',cat:'Roofing'},
+  {id:'skylightrem',name:'Skylight Removal',unit:'EA',price:350,mat:null,labor:null,margin:54,tax:'n',cat:'Roofing'},
+  {id:'pipebo',name:'Pipe Boot DuraFlo — Black',unit:'EA',price:75,mat:45,labor:0,margin:40,tax:'n',cat:'Roofing'},
+  {id:'catwalks',name:'Cat Walks',unit:'EA',price:1125,mat:null,labor:null,margin:50,tax:'n',cat:'Roofing'},
+  {id:'solarfan',name:'Solar Powered Attic Fan',unit:'SQ',price:500,mat:null,labor:null,margin:54,tax:'n',cat:'Roofing'},
+  {id:'nails',name:'Nails with Cap',unit:'BX',price:131.67,mat:79,labor:0,margin:40,tax:'n',cat:'Roofing'},
+  {id:'590da916',name:'Charter Oak Siding',unit:'SQ',price:781.24,mat:195,labor:180,margin:52,tax:'n',cat:'Siding'},
+  {id:'3bbe038e',name:'Ascend Fiber Composite Siding',unit:'SQ',price:1075.54,mat:309,labor:175,margin:55,tax:'n',cat:'Siding'},
+  {id:'d402c18e',name:'Ascend Board & Batten',unit:'SQ',price:1322.21,mat:410,labor:185,margin:55,tax:'n',cat:'Siding'},
+  {id:'b83178b4',name:'Board N Batten Siding',unit:'SQ',price:1060,mat:350,labor:180,margin:50,tax:'n',cat:'Siding'},
+  {id:'odyssey',name:'Odyssey Plus Siding',unit:'SQ',price:740.44,mat:168,labor:180,margin:53,tax:'n',cat:'Siding'},
+  {id:'odysseywrap',name:'Odyssey Plus w/ House Wrap',unit:'SQ',price:691.5,mat:145,labor:180,margin:53,tax:'n',cat:'Siding'},
+  {id:'renewinv',name:'Renew Investor Builder Grade Siding',unit:'SQ',price:596,mat:118,labor:180,margin:50,tax:'n',cat:'Siding'},
+  {id:'tando',name:'Tando Siding',unit:'SQ',price:2928.57,mat:850,labor:175,margin:65,tax:'n',cat:'Siding'},
+  {id:'tandoc',name:'Tando Corners / Ledges',unit:'LF',price:71.43,mat:25,labor:null,margin:65,tax:'n',cat:'Siding'},
+  {id:'cultstone',name:'Culture Stone',unit:'SQ',price:6300,mat:null,labor:null,margin:50,tax:'n',cat:'Siding'},
+  {id:'cultstledge',name:'Culture Stone Ledges',unit:'LF',price:200,mat:null,labor:null,margin:50,tax:'n',cat:'Siding'},
+  {id:'shake',name:'Shake / Scallop Siding',unit:'SQ',price:1166.67,mat:350,labor:175,margin:55,tax:'n',cat:'Siding'},
+  {id:'fullback',name:'Full Back Siding Charter Oak (Drop In)',unit:'SQ',price:1100,mat:null,labor:null,margin:54,tax:'n',cat:'Siding'},
+  {id:'fermout',name:'Fer Out Over Brick / Stucco',unit:'SQ',price:397.5,mat:46,labor:113,margin:60,tax:'n',cat:'Siding'},
+  {id:'tearoff',name:'Tear Off Brick',unit:'LF',price:37.5,mat:null,labor:15,margin:60,tax:'n',cat:'Siding'},
+  {id:'dormersid',name:'Dormer Siding',unit:'EA',price:888.88,mat:150,labor:250,margin:55,tax:'n',cat:'Siding'},
+  {id:'c0dea62f',name:'Detached Garage Siding — Charter Oak',unit:'SQ',price:955.55,mat:250,labor:180,margin:55,tax:'n',cat:'Siding'},
+  {id:'84d721fe',name:'Detached Garage Siding — Odyssey Plus',unit:'SQ',price:844.44,mat:200,labor:180,margin:55,tax:'n',cat:'Siding'},
+  {id:'sidcorn',name:'Siding Corners',unit:'EA',price:60,mat:27,labor:0,margin:55,tax:'n',cat:'Siding'},
+  {id:'sidfastn',name:'Siding Fasteners',unit:'BX',price:144.44,mat:65,labor:0,margin:55,tax:'n',cat:'Siding'},
+  {id:'mountblk',name:'Mounting Blocks — Lights & Water',unit:'EA',price:55.56,mat:15,labor:10,margin:55,tax:'n',cat:'Siding'},
+  {id:'shutters',name:'Shutters',unit:'EA',price:237.5,mat:75,labor:20,margin:60,tax:'n',cat:'Siding'},
+  {id:'rrshut',name:'R&R Shutters',unit:'EA',price:44.44,mat:null,labor:20,margin:55,tax:'n',cat:'Siding'},
+  {id:'rottwood',name:'Rotten Wood Repair',unit:'SQ',price:288,mat:null,labor:null,margin:50,tax:'n',cat:'Siding'},
+  {id:'gutter5',name:'Gutter 5-inch',unit:'LF',price:14,mat:7,labor:null,margin:50,tax:'n',cat:'Gutters & Trim'},
+  {id:'gutter6',name:'Gutters 6-inch',unit:'LF',price:20,mat:10,labor:null,margin:50,tax:'n',cat:'Gutters & Trim'},
+  {id:'gutterds',name:'Gutter Down Spouts',unit:'LF',price:14,mat:7,labor:null,margin:50,tax:'n',cat:'Gutters & Trim'},
+  {id:'guttercover',name:'Gutter Cover SureFlo',unit:'LF',price:15,mat:7.5,labor:null,margin:50,tax:'n',cat:'Gutters & Trim'},
+  {id:'facia',name:'Fascia',unit:'LF',price:12.5,mat:2.5,labor:2.5,margin:60,tax:'n',cat:'Gutters & Trim'},
+  {id:'faciabrd',name:'Fascia Board per Ft',unit:'LF',price:12.22,mat:3,labor:2.5,margin:55,tax:'n',cat:'Gutters & Trim'},
+  {id:'pvfacia',name:'PVC Fascia',unit:'LF',price:16.67,mat:5,labor:2.5,margin:55,tax:'n',cat:'Gutters & Trim'},
+  {id:'slipfacia',name:'Slip Cap Fascia',unit:'LF',price:12,mat:null,labor:null,margin:54,tax:'n',cat:'Gutters & Trim'},
+  {id:'freezebrd',name:'Install Freeze Board',unit:'LF',price:28.89,mat:8,labor:5,margin:55,tax:'n',cat:'Gutters & Trim'},
+  {id:'beamcap',name:'Beam Capping (per 10ft)',unit:'EA',price:345,mat:null,labor:null,margin:50,tax:'n',cat:'Gutters & Trim'},
   {id:'dormercap',name:'Dormer Capping',unit:'EA',price:416.68,mat:100,labor:150,margin:40,tax:'n',cat:'Gutters & Trim'},
-  {id:'vinylsoffit',name:'Vinyl Soffit',unit:'SQ',price:814,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
-  {id:'porchsoffit',name:'Porch Solid Soffit',unit:'SQ',price:814,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
-  {id:'awning_lg',name:'Large Awnings',unit:'EA',price:1590,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
-  {id:'awning_sm',name:'Small Awnings',unit:'EA',price:1060,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
-  {id:'rrawning',name:'R&R Awning',unit:'EA',price:88.89,mat:null,labor:null,margin:null,tax:'n',cat:'Gutters & Trim'},
+  {id:'vinylsoffit',name:'Vinyl Soffit',unit:'SQ',price:814,mat:257,labor:150,margin:50,tax:'n',cat:'Gutters & Trim'},
+  {id:'porchsoffit',name:'Porch Solid Soffit',unit:'SQ',price:814,mat:257,labor:150,margin:50,tax:'n',cat:'Gutters & Trim'},
+  {id:'awning_lg',name:'Large Awnings',unit:'EA',price:1590,mat:null,labor:null,margin:50,tax:'n',cat:'Gutters & Trim'},
+  {id:'awning_sm',name:'Small Awnings',unit:'EA',price:1060,mat:null,labor:null,margin:40,tax:'n',cat:'Gutters & Trim'},
+  {id:'rrawning',name:'R&R Awning',unit:'EA',price:88.89,mat:null,labor:40,margin:55,tax:'n',cat:'Gutters & Trim'},
   {id:'e56bceaa',name:'Double Hung Double Pane Window',unit:'EA',price:860,mat:295,labor:135,margin:50,tax:'n',cat:'Windows'},
   {id:'144ac6df',name:'Casement Double Pane',unit:'EA',price:1300,mat:500,labor:150,margin:50,tax:'n',cat:'Windows'},
   {id:'7d72a28d',name:'4-Lite Casement Double Pane',unit:'EA',price:3500,mat:1500,labor:250,margin:50,tax:'n',cat:'Windows'},
   {id:'178b6622',name:'Double Casement Double Pane',unit:'EA',price:1934,mat:null,labor:null,margin:50,tax:'n',cat:'Windows'},
-  {id:'tcc',name:'Triple Casement Double Pane',unit:'EA',price:2735,mat:null,labor:null,margin:null,tax:'n',cat:'Windows'},
+  {id:'tcc',name:'Triple Casement Double Pane',unit:'EA',price:2735,mat:null,labor:null,margin:50,tax:'n',cat:'Windows'},
   {id:'2e0ca2a5',name:'3-Lite Slider Double Pane',unit:'EA',price:1520.02,mat:675,labor:161,margin:45,tax:'y',cat:'Windows'},
-  {id:'slider',name:'Slider Double Pane',unit:'EA',price:1117.77,mat:null,labor:null,margin:null,tax:'n',cat:'Windows'},
-  {id:'singlehung',name:'Single Hung Double Pane',unit:'EA',price:788.88,mat:null,labor:null,margin:null,tax:'n',cat:'Windows'},
-  {id:'picture',name:'Picture Double Pane',unit:'EA',price:1391.1,mat:null,labor:null,margin:null,tax:'n',cat:'Windows'},
+  {id:'slider',name:'Slider Double Pane',unit:'EA',price:1117.77,mat:373,labor:130,margin:55,tax:'n',cat:'Windows'},
+  {id:'singlehung',name:'Single Hung Double Pane',unit:'EA',price:788.88,mat:220,labor:135,margin:55,tax:'n',cat:'Windows'},
+  {id:'picture',name:'Picture Double Pane',unit:'EA',price:1391.1,mat:466,labor:160,margin:55,tax:'n',cat:'Windows'},
   {id:'baybow',name:'Bay / Bow Double Pane',unit:'EA',price:6333.27,mat:2500,labor:350,margin:55,tax:'n',cat:'Windows'},
   {id:'awningwin',name:'Awning Window',unit:'EA',price:1300,mat:500,labor:150,margin:50,tax:'n',cat:'Windows'},
-  {id:'garden',name:'Garden Window Double Pane',unit:'EA',price:6678,mat:null,labor:null,margin:null,tax:'n',cat:'Windows'},
+  {id:'garden',name:'Garden Window Double Pane',unit:'EA',price:6678,mat:null,labor:null,margin:50,tax:'n',cat:'Windows'},
   {id:'glassblock',name:'Basement Glass Block Windows',unit:'EA',price:660,mat:200,labor:130,margin:50,tax:'n',cat:'Windows'},
-  {id:'glassblocknovent',name:'Glass Block Window — No Vents',unit:'EA',price:660,mat:null,labor:null,margin:null,tax:'n',cat:'Windows'},
-  {id:'glassblockdryer',name:'Glass Block — Dryer Vent',unit:'EA',price:660,mat:null,labor:null,margin:null,tax:'n',cat:'Windows'},
+  {id:'glassblocknovent',name:'Glass Block Window — No Vents',unit:'EA',price:660,mat:200,labor:130,margin:50,tax:'n',cat:'Windows'},
+  {id:'glassblockdryer',name:'Glass Block — Dryer Vent',unit:'EA',price:660,mat:200,labor:130,margin:50,tax:'n',cat:'Windows'},
   {id:'78bd5ac1',name:'Basement Hopper Window',unit:'EA',price:645.46,mat:225,labor:130,margin:45,tax:'n',cat:'Windows'},
-  {id:'renewpic',name:'Renew Investor Picture Window',unit:'EA',price:1140,mat:null,labor:null,margin:null,tax:'n',cat:'Windows'},
-  {id:'renewsing',name:'Renew Investor Single Hung Windows',unit:'EA',price:710,mat:null,labor:null,margin:null,tax:'n',cat:'Windows'},
-  {id:'renewslid',name:'Renew Investor Slider Window',unit:'EA',price:950,mat:null,labor:null,margin:null,tax:'n',cat:'Windows'},
-  {id:'oversized',name:'Oversized Window (101+ sq in)',unit:'EA',price:102.22,mat:null,labor:null,margin:null,tax:'n',cat:'Windows'},
-  {id:'winminjob',name:'Windows Min Job (1-3)',unit:'EA',price:350,mat:null,labor:null,margin:null,tax:'n',cat:'Windows'},
-  {id:'wingrid',name:'Window Grids',unit:'EA',price:168.89,mat:null,labor:null,margin:null,tax:'n',cat:'Window Upgrades'},
-  {id:'wintemper',name:'Window Tempered Glass',unit:'EA',price:130,mat:null,labor:null,margin:null,tax:'n',cat:'Window Upgrades'},
-  {id:'winobscure',name:'Window Obscured Glass',unit:'EA',price:150,mat:null,labor:null,margin:null,tax:'n',cat:'Window Upgrades'},
-  {id:'wintriple',name:'Window Triple Pane Glass',unit:'EA',price:200,mat:null,labor:null,margin:null,tax:'n',cat:'Window Upgrades'},
-  {id:'winwood',name:'Window Wood Grain',unit:'EA',price:122.22,mat:null,labor:null,margin:null,tax:'n',cat:'Window Upgrades'},
-  {id:'winextcol',name:'Window Exterior Color',unit:'EA',price:366.66,mat:null,labor:null,margin:null,tax:'n',cat:'Window Upgrades'},
-  {id:'winscreen',name:'Full Window Screen',unit:'EA',price:55.56,mat:null,labor:null,margin:null,tax:'n',cat:'Window Upgrades'},
-  {id:'winblinds',name:'Internal Blinds — Patio Door',unit:'EA',price:1333.32,mat:null,labor:null,margin:null,tax:'n',cat:'Window Upgrades'},
-  {id:'fypon',name:'Fypon Window Decorative',unit:'EA',price:600,mat:null,labor:null,margin:null,tax:'n',cat:'Window Upgrades'},
-  {id:'fullwincap',name:'Full Window Cap',unit:'EA',price:148,mat:null,labor:null,margin:null,tax:'n',cat:'Window Upgrades'},
-  {id:'pvcwincap',name:'PVC Window Caps',unit:'EA',price:200,mat:null,labor:null,margin:null,tax:'n',cat:'Window Upgrades'},
+  {id:'renewpic',name:'Renew Investor Picture Window',unit:'EA',price:1140,mat:420,labor:150,margin:50,tax:'n',cat:'Windows'},
+  {id:'renewsing',name:'Renew Investor Single Hung Windows',unit:'EA',price:710,mat:220,labor:135,margin:50,tax:'n',cat:'Windows'},
+  {id:'renewslid',name:'Renew Investor Slider Window',unit:'EA',price:950,mat:350,labor:125,margin:50,tax:'n',cat:'Windows'},
+  {id:'oversized',name:'Oversized Window (101+ sq in)',unit:'EA',price:102.22,mat:46,labor:null,margin:55,tax:'n',cat:'Windows'},
+  {id:'winminjob',name:'Windows Min Job (1-3)',unit:'EA',price:350,mat:null,labor:null,margin:50,tax:'n',cat:'Windows'},
+  {id:'wingrid',name:'Window Grids',unit:'EA',price:168.89,mat:76,labor:null,margin:55,tax:'n',cat:'Window Upgrades'},
+  {id:'wintemper',name:'Window Tempered Glass',unit:'EA',price:130,mat:null,labor:null,margin:54,tax:'n',cat:'Window Upgrades'},
+  {id:'winobscure',name:'Window Obscured Glass',unit:'EA',price:150,mat:null,labor:null,margin:54,tax:'n',cat:'Window Upgrades'},
+  {id:'wintriple',name:'Window Triple Pane Glass',unit:'EA',price:200,mat:null,labor:null,margin:54,tax:'n',cat:'Window Upgrades'},
+  {id:'winwood',name:'Window Wood Grain',unit:'EA',price:122.22,mat:55,labor:null,margin:55,tax:'n',cat:'Window Upgrades'},
+  {id:'winextcol',name:'Window Exterior Color',unit:'EA',price:366.66,mat:165,labor:null,margin:55,tax:'n',cat:'Window Upgrades'},
+  {id:'winscreen',name:'Full Window Screen',unit:'EA',price:55.56,mat:25,labor:null,margin:55,tax:'n',cat:'Window Upgrades'},
+  {id:'winblinds',name:'Internal Blinds — Patio Door',unit:'EA',price:1333.32,mat:600,labor:null,margin:55,tax:'n',cat:'Window Upgrades'},
+  {id:'fypon',name:'Fypon Window Decorative',unit:'EA',price:600,mat:150,labor:150,margin:50,tax:'n',cat:'Window Upgrades'},
+  {id:'fullwincap',name:'Full Window Cap',unit:'EA',price:148,mat:19,labor:55,margin:50,tax:'n',cat:'Window Upgrades'},
+  {id:'pvcwincap',name:'PVC Window Caps',unit:'EA',price:200,mat:null,labor:null,margin:54,tax:'n',cat:'Window Upgrades'},
   {id:'entry1',name:'Entry Door #JW735641 (Half Window w/ Grids)',unit:'EA',price:2599,mat:null,labor:null,margin:50,tax:'n',cat:'Doors'},
   {id:'entry2',name:'Entry Door #THDJW184500210 (Half Moon)',unit:'EA',price:2385,mat:null,labor:null,margin:50,tax:'n',cat:'Doors'},
   {id:'entry3',name:'Entry Door JW166100275 (Solid Panel)',unit:'EA',price:2198,mat:null,labor:null,margin:54,tax:'n',cat:'Doors'},
   {id:'entry4',name:'Entry Door JW166500735 (Full View Glass)',unit:'EA',price:3190,mat:null,labor:null,margin:50,tax:'n',cat:'Doors'},
   {id:'entry5',name:'Entry Door JW184700025 (Half Window w/ Blinds)',unit:'EA',price:3190,mat:null,labor:null,margin:50,tax:'n',cat:'Doors'},
   {id:'entry6',name:'Entry Door JWQC228200017 (Square Top w/ Grids)',unit:'EA',price:2650,mat:null,labor:null,margin:50,tax:'n',cat:'Doors'},
-  {id:'patio6',name:'Patio Door 6ft (DP Glass)',unit:'EA',price:3725.6,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
-  {id:'patio6r',name:'Patio Door 6ft (DP Glass) 5-inch Rails',unit:'EA',price:3850,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
-  {id:'patio9',name:'Patio Door 9ft (DP Glass)',unit:'EA',price:4000,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
-  {id:'patio12',name:'Patio Door 12ft (DP Glass)',unit:'EA',price:4500,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
-  {id:'storm1',name:'Storm Door L146FV',unit:'EA',price:1890,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
-  {id:'storm2',name:'Storm Door L146HV',unit:'EA',price:1350,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
-  {id:'storm3',name:'Storm Door L830',unit:'EA',price:1450,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
-  {id:'petstorm1',name:'Pet Storm Door L146PV',unit:'EA',price:2350,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
-  {id:'petstorm2',name:'Pet Storm Door LPD370',unit:'EA',price:1550,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
-  {id:'petstorm3',name:'Pet Storm Door LPDXL370',unit:'EA',price:1850,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
-  {id:'fullentcap',name:'Full Entry / Patio Door Cap',unit:'EA',price:290,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
-  {id:'pvcdoorcap',name:'PVC Door Caps',unit:'EA',price:311.11,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
-  {id:'pvgarcap',name:'PVC Garage Door Cap',unit:'EA',price:680,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
-  {id:'garcap',name:'Garage Door Cap',unit:'EA',price:688.89,mat:null,labor:null,margin:null,tax:'n',cat:'Doors'},
+  {id:'patio6',name:'Patio Door 6ft (DP Glass)',unit:'EA',price:3725.6,mat:1491,labor:260,margin:53,tax:'n',cat:'Doors'},
+  {id:'patio6r',name:'Patio Door 6ft (DP Glass) 5-inch Rails',unit:'EA',price:3850,mat:null,labor:null,margin:54,tax:'n',cat:'Doors'},
+  {id:'patio9',name:'Patio Door 9ft (DP Glass)',unit:'EA',price:4000,mat:1200,labor:400,margin:60,tax:'n',cat:'Doors'},
+  {id:'patio12',name:'Patio Door 12ft (DP Glass)',unit:'EA',price:4500,mat:1400,labor:400,margin:60,tax:'n',cat:'Doors'},
+  {id:'storm1',name:'Storm Door L146FV',unit:'EA',price:1890,mat:null,labor:null,margin:54,tax:'n',cat:'Doors'},
+  {id:'storm2',name:'Storm Door L146HV',unit:'EA',price:1350,mat:null,labor:null,margin:50,tax:'n',cat:'Doors'},
+  {id:'storm3',name:'Storm Door L830',unit:'EA',price:1450,mat:null,labor:null,margin:50,tax:'n',cat:'Doors'},
+  {id:'petstorm1',name:'Pet Storm Door L146PV',unit:'EA',price:2350,mat:null,labor:null,margin:54,tax:'n',cat:'Doors'},
+  {id:'petstorm2',name:'Pet Storm Door LPD370',unit:'EA',price:1550,mat:null,labor:null,margin:54,tax:'n',cat:'Doors'},
+  {id:'petstorm3',name:'Pet Storm Door LPDXL370',unit:'EA',price:1850,mat:null,labor:null,margin:50,tax:'n',cat:'Doors'},
+  {id:'fullentcap',name:'Full Entry / Patio Door Cap',unit:'EA',price:290,mat:70,labor:75,margin:50,tax:'n',cat:'Doors'},
+  {id:'pvcdoorcap',name:'PVC Door Caps',unit:'EA',price:311.11,mat:85,labor:55,margin:55,tax:'n',cat:'Doors'},
+  {id:'pvgarcap',name:'PVC Garage Door Cap',unit:'EA',price:680,mat:null,labor:null,margin:54,tax:'n',cat:'Doors'},
+  {id:'garcap',name:'Garage Door Cap',unit:'EA',price:688.89,mat:125,labor:185,margin:55,tax:'n',cat:'Doors'},
   {id:'5d18b92f',name:'4x4 Post Cap Over 8 FT',unit:'EA',price:300,mat:75,labor:60,margin:55,tax:'n',cat:'Posts & Columns'},
   {id:'cc202eb6',name:'4x4 Post Cap Up to 8 FT',unit:'EA',price:222.22,mat:60,labor:40,margin:55,tax:'n',cat:'Posts & Columns'},
   {id:'4103c81a',name:'6x6 and Above Post Cap',unit:'EA',price:466.67,mat:150,labor:60,margin:55,tax:'y',cat:'Posts & Columns'},
-  {id:'permits',name:'Permits, Dumpster, Cleanup & Disposal',unit:'EA',price:1038.49,mat:null,labor:null,margin:null,tax:'n',cat:'Misc'},
+  {id:'permits',name:'Permits, Dumpster, Cleanup & Disposal',unit:'EA',price:1038.49,mat:675,labor:0,margin:35,tax:'n',cat:'Misc'},
   {id:'allperms',name:'All Permits Included',unit:'EA',price:400,mat:180,labor:null,margin:55,tax:'n',cat:'Misc'},
   {id:'adddump',name:'Additional Dumpster',unit:'EA',price:652.17,mat:300,labor:null,margin:54,tax:'n',cat:'Misc'},
   {id:'delivery',name:'Delivery to Jobsite',unit:'EA',price:166.67,mat:100,labor:0,margin:40,tax:'n',cat:'Misc'},
-  {id:'spotrepair',name:'Spot Repair',unit:'EA',price:150,mat:null,labor:null,margin:null,tax:'n',cat:'Misc'},
-  {id:'minjob',name:'Min Job / Repair Job — Siding & Roof',unit:'EA',price:888.88,mat:null,labor:null,margin:null,tax:'n',cat:'Misc'},
-  {id:'majormod',name:'Major Modification',unit:'EA',price:1250,mat:null,labor:null,margin:null,tax:'n',cat:'Misc'},
-  {id:'minormod',name:'Minor Modification',unit:'EA',price:636,mat:null,labor:null,margin:null,tax:'n',cat:'Misc'},
+  {id:'spotrepair',name:'Spot Repair',unit:'EA',price:150,mat:null,labor:null,margin:54,tax:'n',cat:'Misc'},
+  {id:'minjob',name:'Min Job / Repair Job — Siding & Roof',unit:'EA',price:888.88,mat:100,labor:300,margin:55,tax:'n',cat:'Misc'},
+  {id:'majormod',name:'Major Modification',unit:'EA',price:1250,mat:500,labor:null,margin:60,tax:'n',cat:'Misc'},
+  {id:'minormod',name:'Minor Modification',unit:'EA',price:636,mat:null,labor:null,margin:50,tax:'n',cat:'Misc'},
   {id:'pricematch',name:'14-Day Price Match Guarantee',unit:'EA',price:0,mat:0,labor:0,margin:54,tax:'n',cat:'Misc'},
   {id:'repair',name:'All Repair Jobs — No Warranty',unit:'EA',price:750,mat:null,labor:null,margin:50,tax:'n',cat:'Misc'},
   {id:'timeline4to6',name:'Time Line is 4 to 6 weeks from final measure',unit:'EA',price:0,mat:0,labor:0,margin:0,tax:'n',cat:'Misc'},
@@ -4032,6 +4034,7 @@ async function startOnsiteSigning(options) {
     }
 
     // 2. Build document
+    await rasterizePdfBlocks();
     const docHtml = buildFullPDFHtml();
     if (!docHtml) { if (btn) { btn.textContent = origText; btn.disabled = false; } return; }
 
@@ -4608,6 +4611,31 @@ async function _doGenerateContract() {
 // ============================================================
 // FULL PDF PACKAGE  (print-ready multi-page document)
 // ============================================================
+async function rasterizePdfBlocks() {
+  window._pdfPageCache = window._pdfPageCache || {};
+  if (!window.pdfjsLib) return;
+  const srcs = [];
+  const scan = t => { if (t && Array.isArray(t.documentBlocks)) t.documentBlocks.forEach(b => { if (b && typeof b === 'object' && b.type === 'pdf' && b.src) srcs.push(b.src); }); };
+  scan(typeof activeTemplate !== 'undefined' ? activeTemplate : null);
+  (typeof comboTemplates !== 'undefined' && comboTemplates || []).forEach(scan);
+  for (const src of Array.from(new Set(srcs))) {
+    if (window._pdfPageCache[src]) continue;
+    try {
+      const pdf = await pdfjsLib.getDocument({ url: src }).promise;
+      const pages = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 1.6 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width; canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        pages.push(canvas.toDataURL('image/jpeg', 0.72));
+      }
+      window._pdfPageCache[src] = pages;
+    } catch (e) { console.warn('PDF rasterize failed for', src, e); window._pdfPageCache[src] = []; }
+  }
+}
+
 function buildFullPDFHtml() {
   const _isCompare = isAlsideComparison && alsideTiers && activeTemplate && activeTemplate.tiers && Object.values(alsideTiers).some(a => a && a.length);
   if (!quoteItems.length && !_isCompare) { alert('Please add items to the quote first.'); return null; }
@@ -5320,6 +5348,13 @@ function buildFullPDFHtml() {
       const cap = b.caption ? `<div style="text-align:center;font-size:10px;color:#7a8a9c;margin-top:6px">${h(mergeFields(b.caption))}</div>` : '';
       return pg(`<img src="${h(mergeFields(b.src || ''))}" alt="" style="width:100%;height:auto;display:block;border-radius:4px">${cap}`);
     }
+    if (t === 'pdf') {
+      const src = mergeFields(b.src || '');
+      const pages = (window._pdfPageCache && window._pdfPageCache[src]) || null;
+      if (pages && pages.length) return pages.map(u => pg(`<img src="${u}" style="width:100%;height:auto;display:block">`, 'pdf-embed')).join('');
+      const lbl = h(b.label || 'Attachment');
+      return pg(`<div style="text-align:center;padding:60px 0"><div style="font-size:20px;font-weight:800;color:#1a3a5c">${lbl}</div><div style="font-size:12px;color:#7a8a9c;margin-top:10px">PDF attachment</div></div>`);
+    }
     if (t === 'heading') return pg(`<h1 style="font-size:26px;font-weight:800;color:#1a3a5c">${h(mergeFields(b.text || ''))}</h1>`);
     return '';
   };
@@ -5593,6 +5628,7 @@ ${allPages}
 /* ─── Print (open in new window) ─────────────────────────── */
 async function printQuote() {
   await autoSaveOnContract();
+  await rasterizePdfBlocks();
   const html = buildFullPDFHtml();
   if (!html) return;
   const win = window.open('', '_blank');
