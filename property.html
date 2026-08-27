@@ -999,6 +999,7 @@ async function duplicateQuote(id) {
   const payload = {
     tenant_id:        '5249f9c0-9fca-46c8-896c-4e35be437024',
     created_by:       session.user.id,
+    assigned_rep_id:  session.user.id,
     quote_number:     newNum,
     customer_name:    (q.customer_name || '') + ' (Copy)',
     customer_address: q.customer_address,

@@ -450,8 +450,9 @@ function applyFilters() {
       if (dateF === 'year'    && d.getFullYear() !== now.getFullYear()) return false;
     }
     // Rep filter (admin only)
-    if (repF === 'unassigned') { if (quote.assigned_rep_id) return false; }
-    else if (repF) { if (quote.assigned_rep_id !== repF) return false; }
+    const effRep = quote.assigned_rep_id || quote.created_by;
+    if (repF === 'unassigned') { if (effRep) return false; }
+    else if (repF) { if (effRep !== repF) return false; }
 
     return true;
   });
@@ -518,11 +519,11 @@ function renderTable() {
     if (['admin','super_admin','platform_owner','director'].includes(currentRole)) {
       const opts = [
         `<option value="">— Unassigned —</option>`,
-        ...allReps.map(r => `<option value="${r.id}" ${q.assigned_rep_id === r.id ? 'selected' : ''}>${escHtml(r.name || r.email)}</option>`)
+        ...allReps.map(r => `<option value="${r.id}" ${(q.assigned_rep_id || q.created_by) === r.id ? 'selected' : ''}>${escHtml(r.name || r.email)}</option>`)
       ].join('');
       repCell = `<select class="status-select" style="width:110px;font-size:10px" onchange="assignRep('${q.id}',this.value)">${opts}</select>`;
     } else {
-      repCell = `<span style="font-size:11px;color:var(--muted)">${escHtml(repName(q.assigned_rep_id))}</span>`;
+      repCell = `<span style="font-size:11px;color:var(--muted)">${escHtml(repName(q.assigned_rep_id || q.created_by))}</span>`;
     }
 
     return `<tr>
@@ -591,6 +592,7 @@ async function duplicateQuote(id) {
   const payload = {
     tenant_id:        '5249f9c0-9fca-46c8-896c-4e35be437024',
     created_by:       currentSession.user.id,
+    assigned_rep_id:  currentSession.user.id,
     quote_number:     newNum,
     customer_name:    (q.customer_name || '') + ' (Copy)',
     customer_address: q.customer_address,
