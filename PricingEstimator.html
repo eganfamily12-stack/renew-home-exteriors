@@ -5302,6 +5302,19 @@ function buildFullPDFHtml() {
     </div>`, 'r2');
   })();
 
+  /* Renew-styled Inspection Report (renew2026 theme) - photos + notes under each */
+  const _insp2Cells = quotePhotos.length
+    ? quotePhotos.map((p, i) => {
+        const label = p.caption || p.filename || _inspSlots[i] || ('Photo ' + (i + 1));
+        const notesHtml = p.notes ? `<div class="r2-inote">${h(p.notes)}</div>` : '';
+        return `<div class="r2-icell"><img src="${p.url}" alt="${h(label)}"><div class="r2-icap"><strong>${h(label)}</strong>${notesHtml}</div></div>`;
+      }).join('')
+    : _inspSlots.map((slot, i) => `<div class="r2-icell"><div class="r2-iph">&#128247; ${slot}</div><div class="r2-icap"><strong>${slot}</strong>${i === 0 && notes ? `<div class="r2-inote">${h(notes)}</div>` : ''}</div></div>`).join('');
+  const pgInspection2 = pg(`<div class="r2-pad">
+    <div class="r2-head"><div><div class="r2-eyebrow">Property condition</div><h2 class="r2-sec">Inspection Report</h2></div>${quotePhotos.length ? `<div class="r2-small" style="text-align:right">${h(fullAddr)}<br>${quotePhotos.length} photo${quotePhotos.length !== 1 ? 's' : ''}</div>` : ''}</div>
+    <div class="r2-igrid" style="grid-template-columns:${quotePhotos.length === 1 ? '1fr' : '1fr 1fr'}">${_insp2Cells}</div>
+  `, 'r2');
+
   const BUILTIN_BLOCKS = {
     cover:         pgCover,
     intro:         pgIntro,
@@ -5316,7 +5329,7 @@ function buildFullPDFHtml() {
     terms3:        pgTC3,
     epa1:          pgEPA1,
     epa2:          pgEPA2,
-    cover2: pgCover2, intro2: pgIntro2, tiers2: pgTiers2, product2: pgProduct2, pricing2: pgPricing2, terms2: pgTerms2, authorization2: pgAuth2,
+    cover2: pgCover2, intro2: pgIntro2, inspection2: pgInspection2, tiers2: pgTiers2, product2: pgProduct2, pricing2: pgPricing2, terms2: pgTerms2, authorization2: pgAuth2,
   };
   const DEFAULT_DOC_ORDER = ['cover','intro','reviews','inspection','product','pricing','expect','authorization','terms1','terms2','terms3','epa1','epa2'];
 
@@ -5360,8 +5373,8 @@ function buildFullPDFHtml() {
   };
 
   const _renewOrder = isAlsideComparison
-    ? ['cover2','intro2','tiers2','terms2','authorization2']
-    : ['cover2','intro2','product2','pricing2','terms2','authorization2'];
+    ? ['cover2','intro2','inspection2','tiers2','terms2','authorization2']
+    : ['cover2','intro2','inspection2','product2','pricing2','terms2','authorization2'];
   const _themeOrder = (tpl && tpl.proposalTheme === 'renew2026') ? _renewOrder : null;
   const _docBlockList = (tpl && Array.isArray(tpl.documentBlocks) && tpl.documentBlocks.length)
     ? tpl.documentBlocks
@@ -5562,6 +5575,13 @@ function buildFullPDFHtml() {
 .r2-cl{font-family:"Barlow Condensed",sans-serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--r2muted)}
 .r2-cv{font-size:12px;font-weight:600;color:var(--r2navy)}
 .r2-note{margin-top:15px;background:var(--r2tint);border-left:3px solid var(--r2red);border-radius:0 7px 7px 0;padding:10px 14px;font-size:11.5px;color:var(--r2text);white-space:pre-wrap}
+.r2-igrid{display:grid;gap:16px;margin-top:4px}
+.r2-icell{break-inside:avoid;border:1px solid var(--r2hair);border-radius:10px;overflow:hidden;background:#fff}
+.r2-icell img{width:100%;height:210px;object-fit:cover;display:block}
+.r2-iph{width:100%;height:150px;background:var(--r2tint2);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--r2muted)}
+.r2-icap{padding:9px 12px;font-size:11.5px;color:var(--r2text)}
+.r2-icap strong{font-family:"Barlow Condensed",sans-serif;font-size:13px;letter-spacing:.3px;text-transform:uppercase;color:var(--r2navy);display:block}
+.r2-inote{margin-top:4px;font-size:11px;color:var(--r2text);line-height:1.5;white-space:pre-wrap}
 .r2-ptable{width:100%;border-collapse:collapse;margin-bottom:16px}
 .r2-ptable th{background:var(--r2navy);color:#fff;font-family:"Barlow Condensed",sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;text-align:left;padding:9px 12px;font-weight:600}
 .r2-ptable th:last-child{text-align:right}

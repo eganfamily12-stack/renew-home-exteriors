@@ -1,7 +1,7 @@
 // Renew Home Exteriors — Service Worker
 // Only caches CDN assets. Never intercepts HTML navigation or same-origin fetches.
 
-const CACHE = 'rhe-estimator-v19';
+const CACHE = 'rhe-estimator-v20';
 
 const CDN_ORIGINS = [
   'cdn.jsdelivr.net',

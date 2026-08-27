@@ -1060,7 +1060,7 @@ const PAGE_CATALOG = {
   cover:         { label: 'Cover',              classic: 'cover',         renew: 'cover2' },
   intro:         { label: 'Intro / Why Us',     classic: 'intro',         renew: 'intro2' },
   reviews:       { label: 'Reviews',            classic: 'reviews',       renew: null },
-  inspection:    { label: 'Inspection',         classic: 'inspection',    renew: null },
+  inspection:    { label: 'Inspection Report',  classic: 'inspection',    renew: 'inspection2' },
   tiers:         { label: 'Comparison Tiers',   classic: 'product',       renew: 'tiers2' },
   scope:         { label: 'Scope of Work',      classic: 'product',       renew: 'product2' },
   pricing:       { label: 'Pricing',            classic: 'pricing',       renew: 'pricing2' },
@@ -1075,7 +1075,7 @@ const PAGE_CATALOG = {
 const REQUIRED_PAGES = ['cover', 'authorization'];
 const DEFAULT_PAGES = {
   classic:   ['cover','intro','reviews','inspection','scope','pricing','expect','authorization','terms','terms_extra','terms_extra3','epa1','epa2'],
-  renew2026: ['cover','intro','scope','pricing','terms','authorization'],
+  renew2026: ['cover','intro','inspection','scope','pricing','terms','authorization'],
 };
 let dzPages = [];
 
